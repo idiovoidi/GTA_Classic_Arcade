@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA Clone - Top Down Action</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameContainer {
+            position: relative;
+            border: 2px solid #333;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #1a1a1a;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #minimap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            height: 150px;
+            border: 2px solid #fff;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        #wantedLevel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #ff0000;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        #score {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: #00ff00;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: #fff;
+            font-size: 12px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="ui">
+            <div id="minimap"></div>
+            <div id="wantedLevel">WANTED: 0</div>
+            <div id="score">SCORE: 0</div>
+            <div id="instructions">
+                WASD - Move<br>
+                SPACE - Handbrake<br>
+                Click - Shoot
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/game.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/city.js"></script>
+    <script src="js/pedestrians.js"></script>
+    <script src="js/police.js"></script>
+    <script src="js/vehicles.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
