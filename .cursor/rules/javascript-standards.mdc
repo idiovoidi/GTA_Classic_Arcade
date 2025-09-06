@@ -1,0 +1,382 @@
+---
+globs: *.js
+description: JavaScript coding standards and best practices
+---
+
+# JavaScript Standards for GTA Clone
+
+## 🚀 ES6+ Features Usage
+
+### Required ES6+ Features
+- **Classes**: Use class syntax for game entities
+- **Arrow Functions**: Use for callbacks and short functions
+- **Template Literals**: Use for string interpolation
+- **Destructuring**: Use for object/array destructuring
+- **Spread Operator**: Use for array/object spreading
+- **Default Parameters**: Use for function parameters
+- **const/let**: Use instead of var
+
+### Example Class Structure
+```javascript
+class GameEntity {
+    constructor(game, x, y) {
+        this.game = game;
+        this.x = x;
+        this.y = y;
+        this.health = 100;
+        this.speed = 0;
+    }
+    
+    update(deltaTime) {
+        // Update logic here
+    }
+    
+    render(ctx) {
+        // Render logic here
+    }
+}
+```
+
+## 🏗️ Architecture Patterns
+
+### Modular Design
+- **Single Responsibility**: Each class has one clear purpose
+- **Loose Coupling**: Classes depend on interfaces, not implementations
+- **High Cohesion**: Related functionality grouped together
+- **Dependency Injection**: Pass dependencies through constructor
+
+### File Organization
+- **One class per file** (except small utility classes)
+- **Clear naming conventions** - descriptive file names
+- **Consistent structure** - similar patterns across files
+- **Proper imports/exports** - use ES6 modules when possible
+
+## 🎯 Game-Specific Patterns
+
+### Entity System
+```javascript
+// Base entity class
+class Entity {
+    constructor(game, x, y) {
+        this.game = game;
+        this.x = x;
+        this.y = y;
+        this.health = 100;
+        this.active = true;
+    }
+    
+    update(deltaTime) {
+        if (!this.active) return;
+        // Update logic
+    }
+    
+    render(ctx) {
+        if (!this.active) return;
+        // Render logic
+    }
+    
+    destroy() {
+        this.active = false;
+    }
+}
+```
+
+### Game Loop Pattern
+```javascript
+class Game {
+    constructor() {
+        this.isRunning = false;
+        this.lastTime = 0;
+        this.deltaTime = 0;
+    }
+    
+    gameLoop(currentTime = 0) {
+        if (!this.isRunning) return;
+        
+        this.deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        
+        this.update(this.deltaTime);
+        this.render();
+        
+        requestAnimationFrame((time) => this.gameLoop(time));
+    }
+}
+```
+
+## 🛡️ Error Handling
+
+### Always Use Try-Catch
+```javascript
+// Wrap risky operations
+try {
+    const result = riskyOperation();
+    return result;
+} catch (error) {
+    window.errorHandler?.handleError('operation_error', {
+        message: error.message,
+        stack: error.stack
+    });
+    return defaultValue;
+}
+```
+
+### Safe Property Access
+```javascript
+// Use optional chaining and nullish coalescing
+const value = game?.player?.health ?? 0;
+const position = entity?.position ?? { x: 0, y: 0 };
+```
+
+### Input Validation
+```javascript
+// Validate function parameters
+function updateEntity(entity, deltaTime) {
+    if (!entity || typeof deltaTime !== 'number' || deltaTime < 0) {
+        throw new Error('Invalid parameters');
+    }
+    // Update logic
+}
+```
+
+## 🎨 Canvas Rendering
+
+### Context Management
+```javascript
+// Always save/restore context
+render(ctx) {
+    ctx.save();
+    try {
+        // Drawing operations
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        // Draw entity
+    } finally {
+        ctx.restore();
+    }
+}
+```
+
+### Performance Optimization
+```javascript
+// Batch similar operations
+render(ctx) {
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    
+    // Batch all fill operations
+    this.parts.forEach(part => {
+        ctx.rect(part.x, part.y, part.width, part.height);
+    });
+    
+    ctx.fill();
+}
+```
+
+## 🔧 Physics and Math
+
+### Vector Operations
+```javascript
+// Use vector math for movement
+class Vector2 {
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+    }
+    
+    add(other) {
+        return new Vector2(this.x + other.x, this.y + other.y);
+    }
+    
+    multiply(scalar) {
+        return new Vector2(this.x * scalar, this.y * scalar);
+    }
+    
+    length() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+    
+    normalize() {
+        const len = this.length();
+        return len > 0 ? new Vector2(this.x / len, this.y / len) : new Vector2();
+    }
+}
+```
+
+### Collision Detection
+```javascript
+// Use efficient collision detection
+function checkCollision(obj1, obj2) {
+    const dx = obj1.x - obj2.x;
+    const dy = obj1.y - obj2.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < (obj1.radius + obj2.radius);
+}
+```
+
+## 📊 Performance Best Practices
+
+### Memory Management
+```javascript
+// Reuse objects to avoid garbage collection
+class ObjectPool {
+    constructor(createFn, resetFn) {
+        this.pool = [];
+        this.createFn = createFn;
+        this.resetFn = resetFn;
+    }
+    
+    get() {
+        if (this.pool.length > 0) {
+            return this.pool.pop();
+        }
+        return this.createFn();
+    }
+    
+    release(obj) {
+        this.resetFn(obj);
+        this.pool.push(obj);
+    }
+}
+```
+
+### Efficient Updates
+```javascript
+// Only update active entities
+update(deltaTime) {
+    this.entities = this.entities.filter(entity => {
+        if (!entity.active) return false;
+        
+        try {
+            entity.update(deltaTime);
+            return true;
+        } catch (error) {
+            console.error('Entity update error:', error);
+            return false;
+        }
+    });
+}
+```
+
+## 🎮 Game-Specific JavaScript
+
+### Input Handling
+```javascript
+class InputManager {
+    constructor() {
+        this.keys = {};
+        this.mouse = { x: 0, y: 0, clicked: false };
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        document.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+        });
+    }
+}
+```
+
+### Animation System
+```javascript
+class Animation {
+    constructor(frames, duration) {
+        this.frames = frames;
+        this.duration = duration;
+        this.currentFrame = 0;
+        this.timer = 0;
+    }
+    
+    update(deltaTime) {
+        this.timer += deltaTime;
+        if (this.timer >= this.duration / this.frames.length) {
+            this.timer = 0;
+            this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+        }
+    }
+    
+    getCurrentFrame() {
+        return this.frames[this.currentFrame];
+    }
+}
+```
+
+## 🧪 Testing and Debugging
+
+### Debug Logging
+```javascript
+// Use consistent logging
+const DEBUG = true;
+
+function debugLog(message, data = null) {
+    if (DEBUG) {
+        console.log(`[DEBUG] ${message}`, data);
+    }
+}
+
+function errorLog(message, error) {
+    console.error(`[ERROR] ${message}`, error);
+    window.errorHandler?.handleError('debug_error', {
+        message: error.message,
+        stack: error.stack
+    });
+}
+```
+
+### Performance Monitoring
+```javascript
+// Monitor performance
+class PerformanceMonitor {
+    constructor() {
+        this.frameCount = 0;
+        this.lastTime = 0;
+        this.fps = 0;
+    }
+    
+    update(currentTime) {
+        this.frameCount++;
+        if (currentTime - this.lastTime >= 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastTime = currentTime;
+        }
+    }
+}
+```
+
+## 📝 Code Quality Standards
+
+### Naming Conventions
+- **Classes**: PascalCase (e.g., `GameEntity`, `InputManager`)
+- **Functions**: camelCase (e.g., `updateEntity`, `renderSprite`)
+- **Variables**: camelCase (e.g., `deltaTime`, `playerHealth`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_HEALTH`, `GAME_WIDTH`)
+- **Private members**: Prefix with underscore (e.g., `_privateMethod`)
+
+### Documentation
+```javascript
+/**
+ * Updates the entity's position and state
+ * @param {number} deltaTime - Time elapsed since last update in milliseconds
+ * @returns {void}
+ */
+update(deltaTime) {
+    // Implementation
+}
+```
+
+### Code Organization
+- **Imports at top** - All imports at the beginning
+- **Constants first** - Define constants before functions
+- **Public methods first** - Public methods before private
+- **Helper methods last** - Utility methods at the end
+- **Consistent spacing** - Use consistent indentation and spacing

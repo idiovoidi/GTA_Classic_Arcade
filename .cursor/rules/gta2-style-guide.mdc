@@ -1,0 +1,168 @@
+---
+alwaysApply: true
+description: GTA 2 style and gameplay guidelines
+---
+
+# GTA 2 Style Guide
+
+## 🎮 Core GTA 2 Inspiration
+
+### Visual Style
+- **Top-down 2D perspective** - Never use 3D or isometric views
+- **Pixelated/retro aesthetic** - Use simple shapes, limited colors, chunky sprites
+- **Dark, gritty color palette** - Grays, browns, muted colors with occasional bright accents
+- **Grid-based city layout** - Roads follow a clear grid pattern with diagonal intersections
+- **Simple building shapes** - Rectangular buildings with basic details
+
+### Gameplay Mechanics
+- **Arcade-style driving** - Fast, responsive, slightly unrealistic physics
+- **Simple combat system** - Basic shooting with limited weapon types
+- **Wanted level system** - 1-6 stars, police spawn based on level
+- **Mission-based progression** - Clear objectives and goals
+- **Pedestrian AI** - Simple walking patterns, panic when shot at
+- **Vehicle variety** - Different car types with varying speeds/handling
+
+### Technical Implementation
+- **Pure JavaScript** - No frameworks, libraries, or external dependencies
+- **HTML5 Canvas** - 2D rendering only
+- **60 FPS target** - Smooth, responsive gameplay
+- **Modular architecture** - Separate files for different game systems
+- **Object-oriented design** - Classes for game entities and systems
+
+## 🚫 What NOT to Do
+
+### Avoid Modern GTA Features
+- No 3D graphics or 3D models
+- No complex physics engines
+- No realistic car damage systems
+- No complex AI behaviors
+- No modern UI elements
+- No mobile-first design
+
+### Avoid Complex Systems
+- No multiplayer functionality
+- No complex mission trees
+- No realistic weather systems
+- No complex economy systems
+- No realistic car handling
+
+## ✅ GTA 2 Core Elements
+
+### Must-Have Features
+- Top-down 2D view
+- Grid-based city with roads
+- Simple car physics
+- Basic shooting mechanics
+- Wanted level system
+- Pedestrian AI
+- Police AI
+- Simple mission system
+- Score system
+- Minimap
+
+### Visual Requirements
+- 2D sprites only
+- Simple geometric shapes
+- Limited color palette
+- Clear visual hierarchy
+- Retro pixel art style
+- Grid-based layout
+
+## 🎯 Implementation Standards
+
+### Code Style
+- Use ES6+ JavaScript features
+- Implement proper error handling
+- Use meaningful variable names
+- Comment complex logic
+- Follow modular architecture
+
+### Performance
+- Target 60 FPS
+- Optimize rendering loops
+- Use efficient collision detection
+- Minimize memory allocations
+- Implement proper cleanup
+
+### User Experience
+- Responsive controls
+- Clear visual feedback
+- Simple, intuitive interface
+- Fast loading times
+- Smooth gameplay
+
+## 📁 File Structure
+- [index.html](mdc:index.html) - Main HTML file
+- [js/game.js](mdc:js/game.js) - Core game engine
+- [js/player.js](mdc:js/player.js) - Player car logic
+- [js/city.js](mdc:js/city.js) - City generation and rendering
+- [js/pedestrians.js](mdc:js/pedestrians.js) - Pedestrian AI
+- [js/police.js](mdc:js/police.js) - Police AI
+- [js/vehicles.js](mdc:js/vehicles.js) - Vehicle AI
+- [js/physics.js](mdc:js/physics.js) - Physics calculations
+- [js/ui.js](mdc:js/ui.js) - User interface
+- [js/main.js](mdc:js/main.js) - Game initialization
+
+## 🎨 Visual Guidelines
+
+### Colors
+- **Roads**: Dark gray (#333333)
+- **Buildings**: Brown (#8B4513), Gray (#696969)
+- **Grass**: Dark green (#228B22)
+- **Player car**: Red (#FF0000)
+- **Police cars**: Blue (#0000FF)
+- **Pedestrians**: Various colors
+- **UI**: White text on dark background
+
+### Sprites
+- **Cars**: Simple rectangles with basic details
+- **Buildings**: Rectangular shapes with windows
+- **Pedestrians**: Small colored circles or simple sprites
+- **Weapons**: Simple geometric shapes
+- **Effects**: Basic particle systems
+
+## 🎮 Gameplay Guidelines
+
+### Controls
+- **WASD/Arrow Keys**: Move car
+- **Mouse**: Aim and shoot
+- **Space**: Handbrake
+- **Enter**: Enter/exit vehicles
+- **F12**: Debug console
+
+### Game Flow
+1. Player spawns in city
+2. Can drive around freely
+3. Can shoot pedestrians/vehicles
+4. Wanted level increases with crimes
+5. Police spawn and chase player
+6. Player can complete missions
+7. Score increases with actions
+
+### Difficulty
+- **Easy to learn** - Simple controls
+- **Hard to master** - Skill-based gameplay
+- **Progressive difficulty** - Wanted level system
+- **Fair challenge** - No unfair mechanics
+
+## 🔧 Technical Requirements
+
+### Browser Support
+- Modern browsers with Canvas support
+- ES6+ JavaScript support
+- No external dependencies
+- Responsive design
+
+### Performance
+- 60 FPS target
+- Smooth animations
+- Efficient rendering
+- Memory management
+- Error handling
+
+### Code Quality
+- Clean, readable code
+- Proper error handling
+- Modular architecture
+- Comprehensive comments
+- Consistent style

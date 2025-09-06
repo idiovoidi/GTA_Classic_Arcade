@@ -1,0 +1,471 @@
+---
+globs: js/*.js
+description: Game architecture and design patterns
+---
+
+# Game Architecture for GTA Clone
+
+## 🏗️ Core Architecture Principles
+
+### Modular Design
+- **Separation of Concerns**: Each module handles one specific aspect
+- **Loose Coupling**: Modules interact through well-defined interfaces
+- **High Cohesion**: Related functionality grouped together
+- **Dependency Injection**: Dependencies passed through constructors
+
+### File Structure
+```
+js/
+├── game.js          # Core game engine and main loop
+├── player.js        # Player car and controls
+├── city.js          # City generation and rendering
+├── pedestrians.js   # Pedestrian AI and behavior
+├── police.js        # Police AI and wanted system
+├── vehicles.js      # Vehicle AI and traffic
+├── physics.js       # Physics calculations and collision
+├── ui.js           # User interface and HUD
+├── main.js         # Game initialization and entry point
+├── error-handler.js # Error handling system
+├── error-wrappers.js # Error handling utilities
+└── debug-console.js # Debug and monitoring tools
+```
+
+## 🎮 Game Engine Architecture
+
+### Main Game Class ([game.js](mdc:js/game.js))
+```javascript
+class Game {
+    constructor() {
+        // Initialize core systems
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Game state
+        this.isRunning = false;
+        this.lastTime = 0;
+        this.deltaTime = 0;
+        
+        // Game objects
+        this.player = null;
+        this.city = null;
+        this.pedestrians = [];
+        this.police = [];
+        this.vehicles = [];
+        this.bullets = [];
+        this.particles = [];
+        
+        // Systems
+        this.inputManager = new InputManager();
+        this.physics = new Physics();
+        this.ui = new UI();
+    }
+}
+```
+
+### Entity System Pattern
+```javascript
+// Base entity class
+class Entity {
+    constructor(game, x, y) {
+        this.game = game;
+        this.x = x;
+        this.y = y;
+        this.health = 100;
+        this.active = true;
+        this.radius = 10;
+    }
+    
+    update(deltaTime) {
+        if (!this.active) return;
+        // Override in subclasses
+    }
+    
+    render(ctx) {
+        if (!this.active) return;
+        // Override in subclasses
+    }
+    
+    destroy() {
+        this.active = false;
+    }
+}
+```
+
+## 🚗 Player System ([player.js](mdc:js/player.js))
+
+### Player Car Class
+```javascript
+class Player extends Entity {
+    constructor(game, x, y) {
+        super(game, x, y);
+        this.speed = 0;
+        this.maxSpeed = 5;
+        this.acceleration = 0.2;
+        this.friction = 0.95;
+        this.rotation = 0;
+        this.velocity = { x: 0, y: 0 };
+    }
+    
+    update(deltaTime) {
+        this.handleInput();
+        this.updatePhysics(deltaTime);
+        this.updatePosition(deltaTime);
+    }
+    
+    handleInput() {
+        // WASD/Arrow key handling
+        if (this.game.keys['KeyW'] || this.game.keys['ArrowUp']) {
+            this.speed = Math.min(this.speed + this.acceleration, this.maxSpeed);
+        }
+        // ... other input handling
+    }
+}
+```
+
+## 🏙️ City System ([city.js](mdc:js/city.js))
+
+### City Generation
+```javascript
+class City {
+    constructor(game) {
+        this.game = game;
+        this.width = 2000;
+        this.height = 2000;
+        this.roads = [];
+        this.buildings = [];
+        this.generateCity();
+    }
+    
+    generateCity() {
+        this.generateRoads();
+        this.generateBuildings();
+    }
+    
+    generateRoads() {
+        // Grid-based road generation
+        const roadSpacing = 100;
+        for (let x = 0; x < this.width; x += roadSpacing) {
+            this.roads.push({
+                x: x,
+                y: 0,
+                width: 20,
+                height: this.height,
+                type: 'vertical'
+            });
+        }
+        // ... horizontal roads
+    }
+}
+```
+
+## 🤖 AI Systems
+
+### Pedestrian AI ([pedestrians.js](mdc:js/pedestrians.js))
+```javascript
+class Pedestrian extends Entity {
+    constructor(game, x, y) {
+        super(game, x, y);
+        this.state = 'walking';
+        this.targetX = x;
+        this.targetY = y;
+        this.speed = 1;
+        this.panicTimer = 0;
+    }
+    
+    update(deltaTime) {
+        switch (this.state) {
+            case 'walking':
+                this.updateWalking(deltaTime);
+                break;
+            case 'panicking':
+                this.updatePanicking(deltaTime);
+                break;
+        }
+    }
+}
+```
+
+### Police AI ([police.js](mdc:js/police.js))
+```javascript
+class Police extends Entity {
+    constructor(game, x, y) {
+        super(game, x, y);
+        this.state = 'patrolling';
+        this.target = null;
+        this.speed = 3;
+        this.weapon = new Weapon();
+    }
+    
+    update(deltaTime) {
+        switch (this.state) {
+            case 'patrolling':
+                this.patrol(deltaTime);
+                break;
+            case 'chasing':
+                this.chase(deltaTime);
+                break;
+            case 'attacking':
+                this.attack(deltaTime);
+                break;
+        }
+    }
+}
+```
+
+## 🎯 Physics System ([physics.js](mdc:js/physics.js))
+
+### Collision Detection
+```javascript
+class Physics {
+    static checkCollision(obj1, obj2) {
+        const dx = obj1.x - obj2.x;
+        const dy = obj1.y - obj2.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance < (obj1.radius + obj2.radius);
+    }
+    
+    static checkWallCollision(entity, walls) {
+        for (const wall of walls) {
+            if (this.rectOverlap(entity, wall)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+```
+
+## 🎨 Rendering System
+
+### Render Pipeline
+```javascript
+render() {
+    // Clear canvas
+    this.ctx.fillStyle = '#1a1a1a';
+    this.ctx.fillRect(0, 0, this.width, this.height);
+    
+    // Save context for camera transform
+    this.ctx.save();
+    this.ctx.translate(-this.camera.x, -this.camera.y);
+    
+    // Render in order (back to front)
+    this.city.render(this.ctx);
+    this.vehicles.forEach(v => v.render(this.ctx));
+    this.pedestrians.forEach(p => p.render(this.ctx));
+    this.police.forEach(p => p.render(this.ctx));
+    this.player.render(this.ctx);
+    this.bullets.forEach(b => b.render(this.ctx));
+    this.particles.forEach(p => p.render(this.ctx));
+    
+    // Restore context
+    this.ctx.restore();
+    
+    // Render UI (not affected by camera)
+    this.ui.render(this.ctx);
+}
+```
+
+## 🎮 Input System
+
+### Input Management
+```javascript
+class InputManager {
+    constructor() {
+        this.keys = {};
+        this.mouse = { x: 0, y: 0, clicked: false };
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        document.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+        });
+    }
+}
+```
+
+## 🎯 Game State Management
+
+### State Machine
+```javascript
+class GameState {
+    constructor() {
+        this.currentState = 'menu';
+        this.states = {
+            menu: new MenuState(),
+            playing: new PlayingState(),
+            paused: new PausedState(),
+            gameOver: new GameOverState()
+        };
+    }
+    
+    update(deltaTime) {
+        this.states[this.currentState].update(deltaTime);
+    }
+    
+    render(ctx) {
+        this.states[this.currentState].render(ctx);
+    }
+    
+    changeState(newState) {
+        this.states[this.currentState].exit();
+        this.currentState = newState;
+        this.states[this.currentState].enter();
+    }
+}
+```
+
+## 🛡️ Error Handling Integration
+
+### Error Handling in Game Loop
+```javascript
+gameLoop(currentTime = 0) {
+    try {
+        this.deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        
+        this.update(this.deltaTime);
+        this.render();
+        
+        requestAnimationFrame((time) => this.gameLoop(time));
+    } catch (error) {
+        window.errorHandler?.handleError('game_loop_error', {
+            message: error.message,
+            stack: error.stack,
+            critical: true
+        });
+    }
+}
+```
+
+### Safe Entity Updates
+```javascript
+update(deltaTime) {
+    // Update entities with error handling
+    this.pedestrians = this.pedestrians.filter(ped => {
+        try {
+            window.ErrorWrappers?.safeAIUpdate(ped, deltaTime, 'pedestrian');
+            return ped.active;
+        } catch (error) {
+            window.errorHandler?.handleGameError('pedestrian_update_error', {
+                message: error.message,
+                entity: ped
+            });
+            return false;
+        }
+    });
+}
+```
+
+## 📊 Performance Optimization
+
+### Object Pooling
+```javascript
+class ObjectPool {
+    constructor(createFn, resetFn) {
+        this.pool = [];
+        this.createFn = createFn;
+        this.resetFn = resetFn;
+    }
+    
+    get() {
+        if (this.pool.length > 0) {
+            return this.pool.pop();
+        }
+        return this.createFn();
+    }
+    
+    release(obj) {
+        this.resetFn(obj);
+        this.pool.push(obj);
+    }
+}
+```
+
+### Efficient Rendering
+```javascript
+// Batch similar rendering operations
+render(ctx) {
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    
+    // Batch all rectangles
+    this.entities.forEach(entity => {
+        ctx.rect(entity.x, entity.y, entity.width, entity.height);
+    });
+    
+    ctx.fill();
+}
+```
+
+## 🔧 Debug and Monitoring
+
+### Debug Console Integration
+```javascript
+// Access debug console
+window.debugConsole.show();
+window.debugConsole.log('Game state updated');
+window.debugConsole.executeCommand('game');
+```
+
+### Performance Monitoring
+```javascript
+class PerformanceMonitor {
+    constructor() {
+        this.frameCount = 0;
+        this.lastTime = 0;
+        this.fps = 0;
+    }
+    
+    update(currentTime) {
+        this.frameCount++;
+        if (currentTime - this.lastTime >= 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastTime = currentTime;
+        }
+    }
+}
+```
+
+## 📝 Code Organization Standards
+
+### Class Structure
+```javascript
+class GameEntity {
+    // 1. Constructor
+    constructor(game, x, y) {
+        // Initialize properties
+    }
+    
+    // 2. Public methods
+    update(deltaTime) {
+        // Update logic
+    }
+    
+    render(ctx) {
+        // Render logic
+    }
+    
+    // 3. Private methods
+    _privateMethod() {
+        // Private logic
+    }
+}
+```
+
+### File Organization
+- **Imports** at the top
+- **Constants** after imports
+- **Class definition** in the middle
+- **Helper functions** at the bottom
+- **Consistent spacing** throughout

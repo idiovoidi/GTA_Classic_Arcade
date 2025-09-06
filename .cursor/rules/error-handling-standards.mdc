@@ -1,0 +1,405 @@
+---
+globs: js/*.js
+description: Error handling standards and best practices
+---
+
+# Error Handling Standards for GTA Clone
+
+## 🛡️ Error Handling Architecture
+
+### Core Error Handling System
+- **ErrorHandler Class**: Centralized error management
+- **ErrorWrappers**: Safe wrapper functions for risky operations
+- **DebugConsole**: Real-time error monitoring and debugging
+- **Recovery Strategies**: Automatic recovery for different error types
+
+### Error Types and Handling
+```javascript
+// Critical errors - require immediate attention
+window.errorHandler.handleError('game_engine_error', {
+    message: error.message,
+    stack: error.stack,
+    critical: true
+});
+
+// Game-specific errors - with context
+window.errorHandler.handleGameError('pedestrian_ai_error', {
+    message: error.message,
+    entityId: entity.id,
+    deltaTime: deltaTime
+});
+
+// Non-critical errors - logged silently
+window.errorHandler.handleError('rendering_error', {
+    message: error.message,
+    context: 'sprite_rendering'
+});
+```
+
+## 🔧 Safe Operation Wrappers
+
+### Function Wrapping
+```javascript
+// Wrap risky functions with error handling
+const safeFunction = window.ErrorWrappers.withErrorHandling(
+    riskyFunction,
+    'function_context',
+    fallbackFunction
+);
+
+// Use in game code
+const result = safeFunction.call(this, param1, param2);
+```
+
+### Safe Property Access
+```javascript
+// Safe property access with fallback
+const playerHealth = window.ErrorWrappers.safeGet(
+    game,
+    'player.health',
+    100 // default value
+);
+
+// Safe array operations
+const filteredEntities = window.ErrorWrappers.safeArrayOperation(
+    entities,
+    (arr) => arr.filter(e => e.active),
+    'entity_filter'
+);
+```
+
+### Safe Canvas Operations
+```javascript
+// Safe canvas rendering
+window.ErrorWrappers.safeRenderOperation(ctx, (canvasCtx) => {
+    canvasCtx.fillRect(x, y, width, height);
+}, 'sprite_rendering');
+
+// Safe canvas context creation
+const ctx = canvas.getContext('2d');
+if (!ctx) {
+    window.errorHandler.handleError('canvas_context_error', {
+        message: 'Failed to get 2D context',
+        canvasId: canvas.id
+    });
+}
+```
+
+## 🎮 Game-Specific Error Handling
+
+### Entity Update Safety
+```javascript
+// Safe AI updates
+window.ErrorWrappers.safeAIUpdate(entity, deltaTime, 'pedestrian');
+
+// Safe physics calculations
+const collision = window.ErrorWrappers.safeCollisionDetection(
+    obj1, obj2, 'bullet_collision'
+);
+
+// Safe input handling
+window.ErrorWrappers.safeInputHandling(
+    inputState, 'keyboard', inputHandler
+);
+```
+
+### Game Loop Protection
+```javascript
+gameLoop(currentTime = 0) {
+    try {
+        this.deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        
+        this.update(this.deltaTime);
+        this.render();
+        
+        requestAnimationFrame((time) => this.gameLoop(time));
+    } catch (error) {
+        window.errorHandler?.handleError('game_loop_error', {
+            message: error.message,
+            stack: error.stack,
+            currentTime: currentTime,
+            critical: true
+        });
+        
+        // Attempt recovery
+        setTimeout(() => {
+            if (this.isRunning) {
+                this.gameLoop();
+            }
+        }, 100);
+    }
+}
+```
+
+## 🔍 Error Monitoring and Debugging
+
+### Debug Console Usage
+```javascript
+// Open debug console (F12)
+window.debugConsole.show();
+
+// Log custom messages
+window.debugConsole.log('Custom debug message');
+
+// Execute console commands
+window.debugConsole.executeCommand('game');
+window.debugConsole.executeCommand('errors');
+window.debugConsole.executeCommand('performance');
+```
+
+### Error Statistics
+```javascript
+// Get error statistics
+const stats = window.errorHandler.getErrorStats();
+console.log('Total errors:', stats.total);
+console.log('Critical errors:', stats.critical);
+console.log('Errors by type:', stats.byType);
+```
+
+### Performance Monitoring
+```javascript
+// Monitor performance in debug console
+window.debugConsole.performance = {
+    fps: game.fps,
+    frameTime: game.deltaTime,
+    memory: performance.memory?.usedJSHeapSize / 1024 / 1024
+};
+```
+
+## 🚨 Error Recovery Strategies
+
+### Automatic Recovery
+```javascript
+// Game engine recovery
+if (errorType === 'game_engine_error') {
+    window.game.isRunning = false;
+    setTimeout(() => window.location.reload(), 1000);
+}
+
+// Rendering recovery
+if (errorType === 'rendering_error') {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// AI recovery
+if (errorType === 'ai_error') {
+    // Remove problematic entity
+    entities = entities.filter(e => e !== problematicEntity);
+}
+```
+
+### Manual Recovery
+```javascript
+// Clear error log
+window.errorHandler.clearErrors();
+
+// Export errors for analysis
+window.debugConsole.exportErrors();
+
+// Reload game
+window.debugConsole.reloadGame();
+
+// Test error handling
+window.debugConsole.testError();
+```
+
+## 📊 Error Logging Standards
+
+### Error Log Structure
+```javascript
+{
+    id: "error_1234567890_abc123",
+    type: "pedestrian_ai_error",
+    data: {
+        message: "Invalid deltaTime: NaN",
+        stack: "Error stack trace...",
+        entityId: "pedestrian_123",
+        deltaTime: NaN
+    },
+    timestamp: "2024-01-15T10:30:00.000Z",
+    critical: false,
+    userAgent: "Mozilla/5.0...",
+    url: "https://example.com/game",
+    gameState: {
+        status: "running",
+        score: 150,
+        wantedLevel: 2,
+        entityCounts: { ... }
+    }
+}
+```
+
+### Error Context
+```javascript
+// Always include relevant context
+window.errorHandler.handleGameError('collision_error', {
+    message: error.message,
+    obj1: { x: obj1.x, y: obj1.y, radius: obj1.radius },
+    obj2: { x: obj2.x, y: obj2.y, radius: obj2.radius },
+    gameState: this.getGameState()
+});
+```
+
+## 🎯 Error Prevention
+
+### Input Validation
+```javascript
+// Validate function parameters
+function updateEntity(entity, deltaTime) {
+    if (!entity || typeof deltaTime !== 'number' || deltaTime < 0) {
+        throw new Error('Invalid parameters for updateEntity');
+    }
+    // Update logic
+}
+
+// Validate entity properties
+function renderEntity(entity, ctx) {
+    if (!entity || !ctx || !entity.active) {
+        return;
+    }
+    // Render logic
+}
+```
+
+### Null Checks
+```javascript
+// Safe property access
+const value = entity?.property?.subProperty ?? defaultValue;
+
+// Safe method calls
+entity?.update?.(deltaTime);
+
+// Safe array access
+const item = array?.[index] ?? null;
+```
+
+### Type Checking
+```javascript
+// Check parameter types
+function calculateDistance(obj1, obj2) {
+    if (typeof obj1.x !== 'number' || typeof obj1.y !== 'number') {
+        throw new Error('Invalid object coordinates');
+    }
+    // Calculation logic
+}
+```
+
+## 🔧 Error Handling Configuration
+
+### Enable/Disable Error Handling
+```javascript
+// Enable error handling
+window.errorHandler.setEnabled(true);
+
+// Enable error reporting
+window.errorHandler.setReportingEnabled(true);
+
+// Set maximum error log size
+window.errorHandler.maxErrors = 100;
+```
+
+### Debug Console Configuration
+```javascript
+// Show/hide debug console
+window.debugConsole.show();
+window.debugConsole.hide();
+
+// Toggle console visibility
+window.debugConsole.toggle();
+```
+
+## 📝 Error Handling Best Practices
+
+### Always Use Error Handling
+```javascript
+// Wrap all risky operations
+try {
+    const result = riskyOperation();
+    return result;
+} catch (error) {
+    window.errorHandler?.handleError('operation_error', {
+        message: error.message,
+        stack: error.stack
+    });
+    return defaultValue;
+}
+```
+
+### Provide Meaningful Error Messages
+```javascript
+// Good error message
+throw new Error('Invalid deltaTime: expected number, got ' + typeof deltaTime);
+
+// Bad error message
+throw new Error('Error');
+```
+
+### Include Error Context
+```javascript
+// Include relevant context
+window.errorHandler.handleGameError('entity_update_error', {
+    message: error.message,
+    entityType: entity.constructor.name,
+    entityId: entity.id,
+    gameState: this.getGameState()
+});
+```
+
+### Test Error Scenarios
+```javascript
+// Test error handling
+window.debugConsole.testError();
+
+// Test specific error types
+window.errorHandler.handleError('test_error', {
+    message: 'This is a test error',
+    test: true
+});
+```
+
+## 🚀 Error Handling Integration
+
+### Game Initialization
+```javascript
+// Initialize error handling first
+window.errorHandler = new GameErrorHandler();
+
+// Initialize game with error handling
+try {
+    window.game = new Game();
+    window.game.init();
+} catch (error) {
+    window.errorHandler.handleError('game_init_error', {
+        message: error.message,
+        stack: error.stack,
+        critical: true
+    });
+}
+```
+
+### Entity Creation
+```javascript
+// Safe entity creation
+const entity = window.ErrorWrappers.safeEntityCreation(
+    Pedestrian,
+    [game, x, y],
+    'pedestrian'
+);
+
+if (entity) {
+    this.pedestrians.push(entity);
+}
+```
+
+### Rendering Operations
+```javascript
+// Safe rendering
+window.ErrorWrappers.safeRenderOperation(ctx, (canvasCtx) => {
+    this.renderEntity(canvasCtx);
+}, 'entity_rendering');
+```
+
+This comprehensive error handling system ensures the GTA Clone game is robust, maintainable, and provides excellent debugging capabilities while maintaining the GTA 2 style and JavaScript implementation standards.
