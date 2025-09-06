@@ -50,7 +50,7 @@ class Player {
         this.boostRegenEnabled = false; // Disable automatic regeneration
         this.boostActive = false;
         this.boostMultiplier = 2.0; // Speed multiplier when boost is active
-        this.boostMinimum = 10; // Minimum boost needed to activate
+        this.boostMinimum = 10; // Minimum boost threshold for UI warnings (not activation)
     }
     
     update(deltaTime) {
@@ -101,7 +101,7 @@ class Player {
         }
         
         // Boost (Left Shift)
-        if (keys['ShiftLeft'] && this.boost >= this.boostMinimum) {
+        if (keys['ShiftLeft'] && this.boost > 0) {
             this.boostActive = true;
         } else {
             this.boostActive = false;
