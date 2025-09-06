@@ -283,6 +283,53 @@ class Particle {
         }
         return color;
     }
+    
+    /**
+     * Reset particle to initial state for object pooling
+     * @param {number} x - X position
+     * @param {number} y - Y position
+     * @param {string} color - Particle color
+     * @param {number} life - Particle lifetime
+     * @param {number} size - Particle size
+     * @param {number} angle - Movement angle
+     * @param {number} speed - Movement speed
+     */
+    reset(x, y, color, life, size, angle = 0, speed = 1) {
+        this.x = x || 0;
+        this.y = y || 0;
+        this.color = color || '#ffffff';
+        this.maxLife = life || 60;
+        this.life = life || 60;
+        this.maxSize = size || 2;
+        this.size = size || 2;
+        this.angle = angle || 0;
+        this.speed = speed || 1;
+        
+        // Reset physics properties
+        this.velocity = {
+            x: Math.cos(this.angle) * this.speed,
+            y: Math.sin(this.angle) * this.speed
+        };
+        
+        this.gravity = 0.02;
+        this.friction = 0.98;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.1;
+        
+        // Reset visual properties
+        this.alpha = 1.0;
+        this.fadeRate = 1 / this.life;
+        this.scaleRate = Math.random() * 0.02 + 0.01;
+        
+        // Reset particle type effects
+        try {
+            this.particleType = this.determineParticleType(this.color);
+            this.setupParticleType();
+        } catch (error) {
+            console.warn('Failed to setup particle type during reset:', error);
+            this.particleType = 'generic';
+        }
+    }
 }
 
 /**
@@ -302,6 +349,22 @@ class ExplosionParticle extends Particle {
         this.particleType = 'explosion';
         this.setupParticleType();
     }
+    
+    /**
+     * Reset explosion particle for object pooling
+     */
+    reset(x, y, intensity = 1) {
+        const colors = ['#ff4500', '#ff6600', '#ff8800', '#ffaa00'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 60 + Math.random() * 40;
+        const size = 3 + Math.random() * 5 * intensity;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 4 * intensity;
+        
+        super.reset(x, y, color, life, size, angle, speed);
+        this.particleType = 'explosion';
+        this.setupParticleType();
+    }
 }
 
 class SmokeParticle extends Particle {
@@ -314,6 +377,22 @@ class SmokeParticle extends Particle {
         const speed = 0.5 + Math.random() * 1;
         
         super(game, x, y, color, life, size, angle, speed);
+        this.particleType = 'smoke';
+        this.setupParticleType();
+    }
+    
+    /**
+     * Reset smoke particle for object pooling
+     */
+    reset(x, y) {
+        const colors = ['#666666', '#888888', '#aaaaaa'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 80 + Math.random() * 40;
+        const size = 4 + Math.random() * 6;
+        const angle = -Math.PI/2 + (Math.random() - 0.5) * 0.5;
+        const speed = 0.5 + Math.random() * 1;
+        
+        super.reset(x, y, color, life, size, angle, speed);
         this.particleType = 'smoke';
         this.setupParticleType();
     }
@@ -332,6 +411,22 @@ class BloodParticle extends Particle {
         this.particleType = 'blood';
         this.setupParticleType();
     }
+    
+    /**
+     * Reset blood particle for object pooling
+     */
+    reset(x, y) {
+        const colors = ['#8B0000', '#AA0000', '#CC0000'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 40 + Math.random() * 20;
+        const size = 2 + Math.random() * 3;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 3;
+        
+        super.reset(x, y, color, life, size, angle, speed);
+        this.particleType = 'blood';
+        this.setupParticleType();
+    }
 }
 
 class SparkParticle extends Particle {
@@ -344,6 +439,22 @@ class SparkParticle extends Particle {
         const speed = 3 + Math.random() * 5;
         
         super(game, x, y, color, life, size, angle, speed);
+        this.particleType = 'spark';
+        this.setupParticleType();
+    }
+    
+    /**
+     * Reset spark particle for object pooling
+     */
+    reset(x, y) {
+        const colors = ['#ffff00', '#ffffff', '#ffaa00'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 20 + Math.random() * 20;
+        const size = 1 + Math.random() * 2;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 5;
+        
+        super.reset(x, y, color, life, size, angle, speed);
         this.particleType = 'spark';
         this.setupParticleType();
     }
