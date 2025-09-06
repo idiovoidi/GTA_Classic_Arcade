@@ -147,7 +147,12 @@ class Bullet {
         
         // Apply damage to target
         if (target && typeof target.takeDamage === 'function') {
-            target.takeDamage(this.damage);
+            // Pass bullet angle for blood splatter direction
+            if (target.takeDamage.length > 1) {
+                target.takeDamage(this.damage, this.angle);
+            } else {
+                target.takeDamage(this.damage);
+            }
             
             // Record hit in progression system (only for player bullets)
             if (this.owner === 'player' && this.game.progression) {

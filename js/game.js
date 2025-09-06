@@ -49,6 +49,7 @@ class Game {
         this.bullets = [];
         this.particles = [];
         this.textEffects = [];
+        this.corpses = []; // Persistent corpse system
         
         // Power-up system
         this.powerUpManager = null;
@@ -106,7 +107,8 @@ class Game {
                 vehicles: 20,
                 police: 10,
                 bullets: 100,
-                particles: 200
+                particles: 200,
+                corpses: 30  // Maximum corpses to keep
             }
         };
         
@@ -971,10 +973,195 @@ class Game {
         this.vehicles = this.vehicles.filter(vehicle => vehicle.health > 0);
         this.police = this.police.filter(cop => cop.health > 0);
         
+        // Clean up excess corpses based on performance
+        this.cleanupCorpses();
+        
+        // Clean up excess corpses based on performance
+        this.cleanupCorpses();
+        
         // Force garbage collection hint (if available)
         if (window.gc) {
             window.gc();
         }
+    }
+    
+    /**
+     * Add corpse to the game
+     * @param {Object} corpse - Corpse object to add
+     */
+    addCorpse(corpse) {
+        if (!this.corpses) {
+            this.corpses = [];
+        }
+        this.corpses.push(corpse);
+    }
+    
+    /**
+     * Clean up excess corpses based on performance and memory pressure
+     */
+    cleanupCorpses() {
+        if (!this.corpses || this.corpses.length === 0) return;
+        
+        const maxCorpses = this.memoryManager.maxEntities.corpses;
+        
+        // Check if we need cleanup
+        if (this.corpses.length <= maxCorpses) {
+            // Fade old corpses
+            this.corpses.forEach(corpse => {
+                const age = Date.now() - corpse.creationTime;
+                const maxAge = 120000; // 2 minutes
+                
+                if (age > maxAge) {
+                    corpse.alpha = Math.max(0, 1 - (age - maxAge) / 60000); // Fade over 1 minute
+                }
+            });
+            
+            // Remove completely faded corpses
+            this.corpses = this.corpses.filter(corpse => corpse.alpha > 0);
+            return;
+        }
+        
+        // Performance-based cleanup when we have too many corpses
+        const currentFPS = this.fps || 60;
+        const targetFPS = 50;
+        
+        let corpsesToRemove = this.corpses.length - maxCorpses;
+        
+        // Remove more corpses if performance is poor
+        if (currentFPS < targetFPS) {
+            const performanceRatio = currentFPS / targetFPS;
+            corpsesToRemove = Math.floor(this.corpses.length * (1 - performanceRatio));
+        }
+        
+        // Sort corpses by priority (lower priority = remove first)
+        this.corpses.sort((a, b) => {
+            // Update priorities based on current game state
+            a.priority = this.calculateCorpsePriority(a);
+            b.priority = this.calculateCorpsePriority(b);
+            
+            // Secondary sort by age (older corpses removed first if same priority)
+            if (a.priority === b.priority) {
+                return a.creationTime - b.creationTime;
+            }
+            
+            return a.priority - b.priority;
+        });
+        
+        // Remove the lowest priority corpses
+        this.corpses = this.corpses.slice(corpsesToRemove);
+        
+        console.log(`Cleaned up ${corpsesToRemove} corpses. Remaining: ${this.corpses.length}`);
+    }
+    
+    /**
+     * Calculate current priority for a corpse (higher = keep longer)
+     * @param {Object} corpse - Corpse to calculate priority for
+     * @returns {number} Priority score
+     */
+    calculateCorpsePriority(corpse) {
+        let priority = 1;
+        
+        // Higher priority if closer to player
+        const distanceToPlayer = Math.sqrt(
+            Math.pow(corpse.x - this.player.x, 2) + 
+            Math.pow(corpse.y - this.player.y, 2)
+        );
+        
+        if (distanceToPlayer < 200) priority += 3;
+        else if (distanceToPlayer < 400) priority += 2;
+        else if (distanceToPlayer < 600) priority += 1;
+        
+        // Higher priority if visible on screen
+        if (this.isInViewport(corpse)) {
+            priority += 2;
+        }
+        
+        // Lower priority for very old corpses
+        const age = Date.now() - corpse.creationTime;
+        if (age > 90000) priority -= 2; // Older than 1.5 minutes
+        if (age > 180000) priority -= 4; // Older than 3 minutes
+        
+        return Math.max(0, priority);
+    }
+    
+    /**
+     * Render all corpses
+     */
+    renderCorpses() {
+        if (!this.corpses || this.corpses.length === 0) return;
+        
+        this.corpses.forEach((corpse, index) => {
+            if (this.isInViewport(corpse)) {
+                window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
+                    this.renderCorpse(ctx, corpse);
+                }, `corpse_${index}`);
+            }
+        });
+    }
+    
+    /**
+     * Render individual corpse with blood stains
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {Object} corpse - Corpse object to render
+     */
+    renderCorpse(ctx, corpse) {
+        ctx.save();
+        ctx.globalAlpha = corpse.alpha;
+        
+        // Render blood stains first (underneath corpse)
+        if (corpse.bloodStains) {
+            corpse.bloodStains.forEach(stain => {
+                ctx.save();
+                ctx.globalAlpha = corpse.alpha * stain.alpha;
+                ctx.fillStyle = stain.color;
+                ctx.beginPath();
+                ctx.arc(stain.x, stain.y, stain.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+        
+        // Render corpse body
+        ctx.translate(corpse.x, corpse.y);
+        ctx.rotate(corpse.angle);
+        
+        // Body (darker/grayer version of original color)
+        const bodyColor = this.adjustColorBrightness(corpse.color, 0.3);
+        ctx.fillStyle = bodyColor;
+        ctx.fillRect(-corpse.width / 2, -corpse.height / 2, corpse.width, corpse.height);
+        
+        // Head (pale)
+        ctx.fillStyle = '#d4a574'; // Pale flesh tone
+        ctx.beginPath();
+        ctx.arc(0, -corpse.height / 2 - 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Blood pool around corpse
+        ctx.globalAlpha = corpse.alpha * 0.4;
+        ctx.fillStyle = '#4a0000';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, corpse.width * 0.8, corpse.height * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+    
+    /**
+     * Adjust color brightness
+     * @param {string} color - Hex color string
+     * @param {number} factor - Brightness factor (0-1)
+     * @returns {string} Adjusted color
+     */
+    adjustColorBrightness(color, factor) {
+        // Simple brightness adjustment for corpse rendering
+        if (!color || !color.startsWith('#')) return '#666666';
+        
+        const hex = color.substring(1);
+        const r = Math.floor(parseInt(hex.substring(0, 2), 16) * factor);
+        const g = Math.floor(parseInt(hex.substring(2, 4), 16) * factor);
+        const b = Math.floor(parseInt(hex.substring(4, 6), 16) * factor);
+        
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
     
     /**
@@ -988,7 +1175,8 @@ class Game {
                 vehicles: this.vehicles.length,
                 police: this.police.length,
                 bullets: this.bullets.length,
-                particles: this.particles.length
+                particles: this.particles.length,
+                corpses: this.corpses ? this.corpses.length : 0
             },
             limits: this.memoryManager.maxEntities,
             poolStats: this.poolManager ? this.poolManager.getStats() : null,
@@ -1000,8 +1188,9 @@ class Game {
             pedestrians: stats.entities.pedestrians / stats.limits.pedestrians,
             vehicles: stats.entities.vehicles / stats.limits.vehicles,
             police: stats.entities.police / stats.limits.police,
-            overall: (stats.entities.pedestrians + stats.entities.vehicles + stats.entities.police) / 
-                    (stats.limits.pedestrians + stats.limits.vehicles + stats.limits.police)
+            corpses: stats.entities.corpses / stats.limits.corpses,
+            overall: (stats.entities.pedestrians + stats.entities.vehicles + stats.entities.police + stats.entities.corpses) / 
+                    (stats.limits.pedestrians + stats.limits.vehicles + stats.limits.police + stats.limits.corpses)
         };
         
         return stats;
@@ -1267,6 +1456,9 @@ class Game {
                     }
                 }
             });
+            
+            // Render corpses (ground layer after entities)
+            this.renderCorpses();
             
             // Render player
             if (this.player) {
