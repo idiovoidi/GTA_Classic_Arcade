@@ -248,6 +248,9 @@ class UI {
         
         overlay.innerHTML = `
             <h1>PAUSED</h1>
+            <p>WASD - Move | SHIFT - Boost</p>
+            <p>SPACE - Handbrake | Click - Shoot</p>
+            <p>1-5 - Switch Weapons | R - Reload</p>
             <p>Press ESC to resume</p>
         `;
         
@@ -439,7 +442,7 @@ class UI {
     }
     
     /**
-     * Update compact HUD displaying money and weapon
+     * Update compact HUD displaying money, weapon, and boost meter
      */
     updateCompactHUD() {
         if (!this.game.player) return;
@@ -449,6 +452,11 @@ class UI {
         
         // Get current weapon info
         const weaponInfo = this.game.player.weapon ? this.game.player.weapon.getInfo() : null;
+        
+        // Get boost info
+        const boostPercent = Math.floor((this.game.player.boost / this.game.player.maxBoost) * 100);
+        const boostColor = this.game.player.boostActive ? '#00ff00' : 
+                          this.game.player.boost < this.game.player.boostMinimum ? '#ff6666' : '#00ccff';
         
         // Create or update compact HUD display
         let compactHUD = document.getElementById('compact-hud');
@@ -468,7 +476,7 @@ class UI {
                 z-index: 1000;
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-                min-width: 120px;
+                min-width: 140px;
             `;
             document.body.appendChild(compactHUD);
         }
@@ -478,6 +486,21 @@ class UI {
             <div style="display: flex; align-items: center; margin-bottom: 4px;">
                 <span style="color: #00ff00; font-weight: bold; margin-right: 6px;">💰</span>
                 <span style="color: #00ff00; font-weight: bold;">$${money}</span>
+            </div>
+        `;
+        
+        // Add boost meter
+        hudContent += `
+            <div style="margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; margin-bottom: 2px;">
+                    <span style="color: ${boostColor}; margin-right: 4px; font-size: 12px;">🚀</span>
+                    <span style="color: ${boostColor}; font-size: 11px; font-weight: bold;">BOOST ${boostPercent}%</span>
+                    ${this.game.player.boostActive ? '<span style="color: #00ff00; font-size: 10px; margin-left: 4px;">ACTIVE</span>' : ''}
+                </div>
+                <div style="background: #333; height: 4px; border-radius: 2px; width: 120px;">
+                    <div style="background: ${boostColor}; height: 100%; width: ${boostPercent}%; border-radius: 2px; transition: width 0.1s;"></div>
+                </div>
+                <div style="color: #999; font-size: 9px; margin-top: 1px;">Hold SHIFT to boost • Collect 🚀 to refill</div>
             </div>
         `;
         

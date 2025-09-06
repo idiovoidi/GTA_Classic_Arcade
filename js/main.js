@@ -163,6 +163,8 @@ if (window.location.search.includes('debug=true')) {
                     console.log('F7 - Spawn truck');
                     console.log('F8 - Spawn motorcycle');
                     console.log('F9 - Show vehicle stats');
+                    console.log('F10 - Add boost (50%)');
+                    console.log('F11 - Toggle boost regeneration');
                     break;
                 case 'F2':
                     game.player.heal(25);
@@ -192,6 +194,18 @@ if (window.location.search.includes('debug=true')) {
                     const stats = game.getVehicleTypeStats();
                     console.log('Vehicle Type Stats:', stats);
                     console.log('Total vehicles:', game.vehicles.length);
+                    break;
+                case 'F10':
+                    if (game.player && game.player.addBoost) {
+                        game.player.addBoost(50);
+                        console.log('Added 50% boost to player');
+                    }
+                    break;
+                case 'F11':
+                    if (game.player && game.player.setBoostRegeneration) {
+                        game.player.boostRegenEnabled = !game.player.boostRegenEnabled;
+                        console.log(`Boost regeneration: ${game.player.boostRegenEnabled ? 'ENABLED' : 'DISABLED'}`);
+                    }
                     break;
             }
         }

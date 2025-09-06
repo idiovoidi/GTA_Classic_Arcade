@@ -100,6 +100,15 @@ class PowerUp {
                 value: 1,
                 duration: 20000, // 20 seconds
                 sound: 'explosive_pickup'
+            },
+            boost_refill: {
+                name: 'Boost Refill',
+                color: '#00ccff',
+                icon: '🚀',
+                effect: 'boost_refill',
+                value: 50, // Refill 50 boost points
+                duration: 0, // Instant effect
+                sound: 'boost_pickup'
             }
         };
         
@@ -208,6 +217,12 @@ class PowerUp {
                 
             case 'explosive_ammo':
                 player.addPowerUp('explosive_ammo', this.config.value, this.config.duration);
+                break;
+                
+            case 'boost_refill':
+                if (player.addBoost) {
+                    player.addBoost(this.config.value);
+                }
                 break;
         }
     }
@@ -439,7 +454,7 @@ class PowerUpManager {
         
         // Random power-up type
         const types = ['health', 'ammo', 'speed', 'damage', 'invincibility', 
-                      'rapid_fire', 'multi_shot', 'explosive_ammo'];
+                      'rapid_fire', 'multi_shot', 'explosive_ammo', 'boost_refill'];
         const type = types[Math.floor(Math.random() * types.length)];
         
         const powerUp = new PowerUp(this.game, x, y, type);

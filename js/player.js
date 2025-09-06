@@ -41,6 +41,16 @@ class Player {
         this.tireMarks = [];
         this.invincible = false;
         this.invincibilityTimer = 0;
+        
+        // Boost system
+        this.boost = 50; // Start with 50% boost
+        this.maxBoost = 100;
+        this.boostDrain = 35; // Boost consumed per second when active
+        this.boostRecharge = 15; // Boost recharged per second when not active (disabled for now)
+        this.boostRegenEnabled = false; // Disable automatic regeneration
+        this.boostActive = false;
+        this.boostMultiplier = 2.0; // Speed multiplier when boost is active
+        this.boostMinimum = 10; // Minimum boost needed to activate
     }
     
     update(deltaTime) {
@@ -51,6 +61,7 @@ class Player {
         this.updatePowerUps(deltaTime);
         this.updateInvincibility(deltaTime);
         this.updateEngineSound(deltaTime);
+        this.updateBoost(deltaTime);
         
         // Keep player within city bounds
         this.x = Math.max(0, Math.min(this.game.city.width, this.x));
@@ -61,10 +72,15 @@ class Player {
         const keys = this.game.keys;
         
         // Forward/backward movement
+        let currentMaxSpeed = this.maxSpeed;
+        if (this.boostActive) {
+            currentMaxSpeed *= this.boostMultiplier;
+        }
+        
         if (keys['KeyW'] || keys['ArrowUp']) {
-            this.speed = Math.min(this.maxSpeed, this.speed + this.acceleration);
+            this.speed = Math.min(currentMaxSpeed, this.speed + this.acceleration);
         } else if (keys['KeyS'] || keys['ArrowDown']) {
-            this.speed = Math.max(-this.maxSpeed * 0.5, this.speed - this.acceleration);
+            this.speed = Math.max(-currentMaxSpeed * 0.5, this.speed - this.acceleration);
         } else {
             this.speed *= this.friction;
         }
@@ -82,6 +98,13 @@ class Player {
         // Handbrake
         if (keys['Space']) {
             this.speed *= 0.9;
+        }
+        
+        // Boost (Left Shift)
+        if (keys['ShiftLeft'] && this.boost >= this.boostMinimum) {
+            this.boostActive = true;
+        } else {
+            this.boostActive = false;
         }
         
         // Weapon switching
@@ -110,6 +133,12 @@ class Player {
     }
     
     updatePhysics() {
+        // Apply boost multiplier to max speed if boost is active
+        let currentMaxSpeed = this.maxSpeed;
+        if (this.boostActive) {
+            currentMaxSpeed *= this.boostMultiplier;
+        }
+        
         // Calculate velocity based on speed and angle
         this.velocity.x = Math.cos(this.angle) * this.speed;
         this.velocity.y = Math.sin(this.angle) * this.speed;
@@ -121,6 +150,11 @@ class Player {
         // Add tire marks when moving fast
         if (Math.abs(this.speed) > 1) {
             this.addTireMark();
+        }
+        
+        // Add boost-specific tire marks when boosting
+        if (this.boostActive && Math.abs(this.speed) > 2) {
+            this.addBoostTireMark();
         }
     }
     
@@ -137,7 +171,20 @@ class Player {
                 x: this.x + (Math.random() - 0.5) * this.width,
                 y: this.y + (Math.random() - 0.5) * this.height,
                 angle: this.angle,
-                life: 100
+                life: 100,
+                boost: false
+            });
+        }
+    }
+    
+    addBoostTireMark() {
+        if (Math.random() < 0.6) { // More frequent boost marks
+            this.tireMarks.push({
+                x: this.x + (Math.random() - 0.5) * this.width,
+                y: this.y + (Math.random() - 0.5) * this.height,
+                angle: this.angle,
+                life: 150, // Boost marks last longer
+                boost: true
             });
         }
     }
@@ -186,8 +233,17 @@ class Player {
             ctx.save();
             ctx.translate(mark.x, mark.y);
             ctx.rotate(mark.angle);
-            ctx.fillStyle = `rgba(100, 100, 100, ${mark.life / 100})`;
-            ctx.fillRect(-2, -1, 4, 2);
+            
+            if (mark.boost) {
+                // Boost tire marks are brighter and wider
+                ctx.fillStyle = `rgba(255, 100, 0, ${mark.life / 150})`;
+                ctx.fillRect(-3, -1.5, 6, 3);
+            } else {
+                // Normal tire marks
+                ctx.fillStyle = `rgba(100, 100, 100, ${mark.life / 100})`;
+                ctx.fillRect(-2, -1, 4, 2);
+            }
+            
             ctx.restore();
         });
         
@@ -216,6 +272,28 @@ class Player {
         ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
     }
     
+    /**
+     * Update boost system
+     * @param {number} deltaTime - Delta time
+     */
+    updateBoost(deltaTime) {
+        const deltaSeconds = deltaTime / 1000; // Convert to seconds
+        
+        if (this.boostActive && this.boost > 0) {
+            // Drain boost when active
+            this.boost -= this.boostDrain * deltaSeconds;
+            this.boost = Math.max(0, this.boost);
+            
+            // Deactivate boost if depleted
+            if (this.boost <= 0) {
+                this.boostActive = false;
+            }
+        } else if (!this.boostActive && this.boost < this.maxBoost && this.boostRegenEnabled) {
+            // Only recharge boost when regen is enabled (currently disabled)
+            this.boost += this.boostRecharge * deltaSeconds;
+            this.boost = Math.min(this.maxBoost, this.boost);
+        }
+    }
     /**
      * Update engine sound based on speed
      * @param {number} deltaTime - Delta time
@@ -506,6 +584,33 @@ class Player {
     }
     
     /**
+     * Add boost amount
+     * @param {number} amount - Amount to add to boost
+     */
+    addBoost(amount) {
+        this.boost = Math.min(this.maxBoost, this.boost + amount);
+        
+        // Show boost pickup effect
+        if (this.game.addTextEffect) {
+            this.game.addTextEffect(
+                this.x,
+                this.y - 40,
+                `+${amount} Boost!`,
+                '#00ccff',
+                1500
+            );
+        }
+    }
+    
+    /**
+     * Enable or disable boost regeneration (for future implementations)
+     * @param {boolean} enabled - Whether to enable boost regeneration
+     */
+    setBoostRegeneration(enabled) {
+        this.boostRegenEnabled = enabled;
+    }
+    
+    /**
      * Get player info for UI
      * @returns {Object} Player information
      */
@@ -513,6 +618,9 @@ class Player {
         return {
             health: this.health,
             maxHealth: this.maxHealth,
+            boost: this.boost,
+            maxBoost: this.maxBoost,
+            boostActive: this.boostActive,
             weapon: this.weapon ? this.weapon.getInfo() : null,
             powerUps: Array.from(this.activePowerUps.entries()).map(([type, powerUp]) => ({
                 type: type,
