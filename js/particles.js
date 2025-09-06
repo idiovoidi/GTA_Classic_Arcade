@@ -6,15 +6,15 @@
 class Particle {
     constructor(game, x, y, color, life, size, angle = 0, speed = 1) {
         this.game = game;
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.maxLife = life;
-        this.life = life;
-        this.maxSize = size;
-        this.size = size;
-        this.angle = angle;
-        this.speed = speed;
+        this.x = x || 0;
+        this.y = y || 0;
+        this.color = color || '#ffffff';
+        this.maxLife = life || 60;
+        this.life = life || 60;
+        this.maxSize = size || 2;
+        this.size = size || 2;
+        this.angle = angle || 0;
+        this.speed = speed || 1;
         
         // Physics properties
         this.velocity = {
@@ -33,43 +33,62 @@ class Particle {
         this.scaleRate = Math.random() * 0.02 + 0.01;
         
         // Particle type effects
-        this.particleType = this.determineParticleType(color);
-        this.setupParticleType();
+        try {
+            this.particleType = this.determineParticleType(this.color);
+            this.setupParticleType();
+        } catch (error) {
+            console.warn('Failed to setup particle type:', error);
+            this.particleType = 'generic';
+        }
     }
     
     determineParticleType(color) {
-        if (color.includes('#ff4500') || color.includes('#ff8c00')) return 'explosion';
-        if (color.includes('#666') || color.includes('#999')) return 'smoke';
-        if (color.includes('#ff0000')) return 'blood';
-        if (color.includes('#ffff00') || color.includes('#ffffff')) return 'spark';
-        if (color.includes('#00ff00')) return 'energy';
+        // Ensure color is a string and handle null/undefined
+        if (!color || typeof color !== 'string') {
+            return 'generic';
+        }
+        
+        const colorStr = color.toLowerCase();
+        if (colorStr.includes('#ff4500') || colorStr.includes('#ff8c00')) return 'explosion';
+        if (colorStr.includes('#666') || colorStr.includes('#999')) return 'smoke';
+        if (colorStr.includes('#ff0000')) return 'blood';
+        if (colorStr.includes('#ffff00') || colorStr.includes('#ffffff')) return 'spark';
+        if (colorStr.includes('#00ff00')) return 'energy';
         return 'generic';
     }
     
     setupParticleType() {
-        switch (this.particleType) {
-            case 'explosion':
-                this.gravity = 0.05;
-                this.friction = 0.96;
-                break;
-            case 'smoke':
-                this.gravity = -0.02; // Smoke rises
-                this.friction = 0.99;
-                this.scaleRate = 0.03; // Smoke expands
-                break;
-            case 'blood':
-                this.gravity = 0.1;
-                this.friction = 0.94;
-                break;
-            case 'spark':
-                this.gravity = 0.03;
-                this.friction = 0.97;
-                break;
-            case 'energy':
-                this.gravity = 0;
-                this.friction = 0.95;
-                this.rotationSpeed = 0.2;
-                break;
+        try {
+            switch (this.particleType) {
+                case 'explosion':
+                    this.gravity = 0.05;
+                    this.friction = 0.96;
+                    break;
+                case 'smoke':
+                    this.gravity = -0.02; // Smoke rises
+                    this.friction = 0.99;
+                    this.scaleRate = 0.03; // Smoke expands
+                    break;
+                case 'blood':
+                    this.gravity = 0.1;
+                    this.friction = 0.94;
+                    break;
+                case 'spark':
+                    this.gravity = 0.03;
+                    this.friction = 0.97;
+                    break;
+                case 'energy':
+                    this.gravity = 0;
+                    this.friction = 0.95;
+                    this.rotationSpeed = 0.2;
+                    break;
+                default:
+                    // Keep default values for generic particles
+                    break;
+            }
+        } catch (error) {
+            console.warn('Failed to setup particle type properties:', error);
+            // Keep default values
         }
     }
     

@@ -171,13 +171,13 @@ class ParticlePool extends ObjectPool {
             () => new Particle(game, 0, 0, '#000000', 100, 1),
             // Reset function
             (particle, x, y, color, life, size, angle, speed) => {
-                particle.x = x;
-                particle.y = y;
-                particle.color = color;
-                particle.maxLife = life;
-                particle.life = life;
-                particle.maxSize = size;
-                particle.size = size;
+                particle.x = x || 0;
+                particle.y = y || 0;
+                particle.color = color || '#ffffff';
+                particle.maxLife = life || 60;
+                particle.life = life || 60;
+                particle.maxSize = size || 2;
+                particle.size = size || 2;
                 particle.angle = angle || 0;
                 particle.speed = speed || 1;
                 
@@ -286,7 +286,19 @@ class PoolManager {
      * Create a particle using object pooling
      */
     createParticle(x, y, color, life, size, angle, speed) {
-        return this.particlePool.createParticle(x, y, color, life, size, angle, speed);
+        try {
+            return this.particlePool.createParticle(x, y, color, life, size, angle, speed);
+        } catch (error) {
+            console.warn('Failed to create particle:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Get a particle using object pooling (alias for createParticle)
+     */
+    getParticle(x, y, color, life, size, angle, speed) {
+        return this.createParticle(x, y, color, life, size, angle, speed);
     }
     
     /**

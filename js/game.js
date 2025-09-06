@@ -155,6 +155,10 @@ class Game {
         // Keyboard events
         document.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
+            // Resume audio context on first user interaction
+            if (this.audioManager) {
+                this.audioManager.resumeAudio();
+            }
         });
         
         document.addEventListener('keyup', (e) => {
