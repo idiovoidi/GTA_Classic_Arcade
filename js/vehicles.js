@@ -2,8 +2,8 @@
 const VEHICLE_TYPES = {
     SEDAN: {
         name: 'Sedan',
-        width: 18,
-        height: 36,
+        width: 36, // Length of the car (front to back)
+        height: 18, // Width of the car (side to side)
         radius: 15,
         health: 40,
         mass: 1.5,
@@ -15,8 +15,8 @@ const VEHICLE_TYPES = {
     },
     SPORTS_CAR: {
         name: 'Sports Car',
-        width: 16,
-        height: 32,
+        width: 32, // Length of the car
+        height: 16, // Width of the car
         radius: 14,
         health: 35,
         mass: 1.2,
@@ -28,8 +28,8 @@ const VEHICLE_TYPES = {
     },
     TRUCK: {
         name: 'Truck',
-        width: 22,
-        height: 45,
+        width: 45, // Length of the truck
+        height: 22, // Width of the truck
         radius: 20,
         health: 80,
         mass: 3.0,
@@ -41,8 +41,8 @@ const VEHICLE_TYPES = {
     },
     MOTORCYCLE: {
         name: 'Motorcycle',
-        width: 10,
-        height: 24,
+        width: 24, // Length of the motorcycle
+        height: 10, // Width of the motorcycle
         radius: 8,
         health: 15,
         mass: 0.8,
@@ -491,7 +491,7 @@ class Vehicle {
     }
     
     renderSedan(ctx) {
-        // Standard sedan rendering
+        // Standard sedan rendering - width is length (front to back)
         ctx.fillStyle = this.color;
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
         
@@ -499,22 +499,22 @@ class Vehicle {
         ctx.fillStyle = '#000';
         ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, this.height - 4);
         
-        // Windshield
+        // Windshield at the front
         ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-this.width / 2 + 3, -this.height / 2 + 3, this.width - 6, 6);
+        ctx.fillRect(this.width / 2 - 8, -this.height / 2 + 3, 6, this.height - 6);
         
-        // Headlights
+        // Headlights at the front
         ctx.fillStyle = '#ffff99';
-        ctx.fillRect(-this.width / 2 + 1, -this.height / 2 + 1, 3, 3);
-        ctx.fillRect(this.width / 2 - 4, -this.height / 2 + 1, 3, 3);
+        ctx.fillRect(this.width / 2 - 2, -this.height / 2 + 1, 3, 3);
+        ctx.fillRect(this.width / 2 - 2, this.height / 2 - 4, 3, 3);
         
-        // Direction indicator
+        // Direction indicator at the very front
         ctx.fillStyle = '#ff0000';
-        ctx.fillRect(this.width / 2 - 2, -2, 4, 4);
+        ctx.fillRect(this.width / 2 - 1, -2, 3, 4);
     }
     
     renderSportsCar(ctx) {
-        // Sleeker sports car design
+        // Sleeker sports car design - width is length
         ctx.fillStyle = this.color;
         
         // Main body (more aerodynamic shape)
@@ -526,69 +526,69 @@ class Vehicle {
         ctx.fillStyle = '#000';
         ctx.fillRect(-this.width / 2 + 1, -this.height / 2 + 1, this.width - 2, this.height - 2);
         
-        // Windshield (larger for sports car)
+        // Windshield at the front (larger for sports car)
         ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, 8);
+        ctx.fillRect(this.width / 2 - 10, -this.height / 2 + 2, 8, this.height - 4);
         
-        // Racing stripes
+        // Racing stripes along the length
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-1, -this.height / 2, 2, this.height);
+        ctx.fillRect(-2, -this.width / 2, 4, this.width);
         
-        // Bright headlights
+        // Bright headlights at the front
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-this.width / 2 + 1, -this.height / 2 + 1, 2, 2);
-        ctx.fillRect(this.width / 2 - 3, -this.height / 2 + 1, 2, 2);
+        ctx.fillRect(this.width / 2 - 2, -this.height / 2 + 1, 2, 2);
+        ctx.fillRect(this.width / 2 - 2, this.height / 2 - 3, 2, 2);
     }
     
     renderTruck(ctx) {
-        // Larger, more robust truck design
+        // Larger, more robust truck design - width is length
         ctx.fillStyle = this.color;
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
         
-        // Truck cab
+        // Truck cab at the front
         ctx.fillStyle = this.adjustColor(this.color, -20);
-        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height / 3);
+        ctx.fillRect(this.width / 3, -this.height / 2, this.width / 6, this.height);
         
-        // Cargo area
+        // Cargo area behind cab
         ctx.fillStyle = '#654321';
-        ctx.fillRect(-this.width / 2 + 1, -this.height / 6, this.width - 2, this.height / 2);
+        ctx.fillRect(-this.width / 2 + 1, -this.height / 2 + 1, 2 * this.width / 3, this.height - 2);
         
-        // Windshield
+        // Windshield at the front
         ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, 6);
+        ctx.fillRect(this.width / 2 - 8, -this.height / 2 + 2, 6, this.height - 4);
         
-        // Large headlights
+        // Large headlights at the front
         ctx.fillStyle = '#ffff99';
-        ctx.fillRect(-this.width / 2 + 1, -this.height / 2 + 1, 4, 4);
-        ctx.fillRect(this.width / 2 - 5, -this.height / 2 + 1, 4, 4);
+        ctx.fillRect(this.width / 2 - 2, -this.height / 2 + 1, 4, 4);
+        ctx.fillRect(this.width / 2 - 2, this.height / 2 - 5, 4, 4);
         
-        // Grille
+        // Grille at the very front
         ctx.fillStyle = '#333';
-        ctx.fillRect(-this.width / 2 + 1, this.height / 2 - 4, this.width - 2, 3);
+        ctx.fillRect(this.width / 2 - 1, -this.height / 2 + 1, 3, this.height - 2);
     }
     
     renderMotorcycle(ctx) {
-        // Thin motorcycle design
+        // Thin motorcycle design - width is length
         ctx.fillStyle = this.color;
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
         
-        // Rider
+        // Rider in the middle
         ctx.fillStyle = '#333';
-        ctx.fillRect(-2, -this.height / 4, 4, 8);
+        ctx.fillRect(-4, -this.height / 4, 8, this.height / 2);
         
-        // Wheels (more visible on motorcycle)
+        // Wheels along the length (front and back)
         ctx.fillStyle = '#000';
         ctx.beginPath();
-        ctx.arc(0, -this.height / 3, 3, 0, 2 * Math.PI);
+        ctx.arc(this.width / 3, 0, 3, 0, 2 * Math.PI);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(0, this.height / 3, 3, 0, 2 * Math.PI);
+        ctx.arc(-this.width / 3, 0, 3, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Headlight
+        // Headlight at the front
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(0, -this.height / 2 + 2, 2, 0, 2 * Math.PI);
+        ctx.arc(this.width / 2 - 2, 0, 2, 0, 2 * Math.PI);
         ctx.fill();
     }
     

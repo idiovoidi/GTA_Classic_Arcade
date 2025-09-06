@@ -3,8 +3,8 @@ class Police {
         this.game = game;
         this.x = x;
         this.y = y;
-        this.width = 16;
-        this.height = 32;
+        this.width = 32; // Length of the police car (front to back)
+        this.height = 16; // Width of the police car (side to side)
         this.radius = 12;
         this.health = 50;
         this.maxHealth = 50;
@@ -244,24 +244,24 @@ class Police {
             ctx.fillStyle = '#fff';
             ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, this.height - 4);
             
-            // Windshield
+            // Windshield at the front
             ctx.fillStyle = '#87CEEB';
-            ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, 8);
+            ctx.fillRect(this.width / 2 - 10, -this.height / 2 + 4, 8, this.height - 8);
             
-            // Police lights
+            // Police lights at the front
             if (this.sirenOn) {
                 ctx.fillStyle = '#ff0000';
-                ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, 4, 4);
-                ctx.fillRect(this.width / 2 - 6, -this.height / 2 + 2, 4, 4);
+                ctx.fillRect(this.width / 2 - 2, -this.height / 2 + 2, 4, 4);
+                ctx.fillRect(this.width / 2 - 2, this.height / 2 - 6, 4, 4);
             } else {
                 ctx.fillStyle = '#0000ff';
-                ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, 4, 4);
-                ctx.fillRect(this.width / 2 - 6, -this.height / 2 + 2, 4, 4);
+                ctx.fillRect(this.width / 2 - 2, -this.height / 2 + 2, 4, 4);
+                ctx.fillRect(this.width / 2 - 2, this.height / 2 - 6, 4, 4);
             }
             
-            // Direction indicator
+            // Direction indicator at the very front
             ctx.fillStyle = '#fff';
-            ctx.fillRect(this.width / 2 - 2, -2, 4, 4);
+            ctx.fillRect(this.width / 2 - 1, -2, 3, 4);
         }
         
         ctx.restore();

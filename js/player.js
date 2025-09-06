@@ -3,8 +3,8 @@ class Player {
         this.game = game;
         this.x = x;
         this.y = y;
-        this.width = 20;
-        this.height = 40;
+        this.width = 40; // Length of the car (front to back)
+        this.height = 20; // Width of the car (side to side)
         this.angle = 0;
         this.speed = 0;
         this.maxSpeed = 4;
@@ -166,18 +166,18 @@ class Player {
         ctx.fillStyle = '#000';
         ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, this.height - 4);
         
-        // Draw windshield
+        // Draw windshield at the front
         ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, 8);
+        ctx.fillRect(this.width / 2 - 10, -this.height / 2 + 4, 8, this.height - 8);
         
-        // Draw headlights
+        // Draw headlights at the front
         ctx.fillStyle = '#ffff00';
-        ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, 4, 4);
-        ctx.fillRect(this.width / 2 - 6, -this.height / 2 + 2, 4, 4);
+        ctx.fillRect(this.width / 2 - 2, -this.height / 2 + 2, 4, 4);
+        ctx.fillRect(this.width / 2 - 2, this.height / 2 - 6, 4, 4);
         
-        // Draw direction indicator
+        // Draw direction indicator at the very front
         ctx.fillStyle = '#ff0000';
-        ctx.fillRect(this.width / 2 - 2, -2, 4, 4);
+        ctx.fillRect(this.width / 2 - 1, -2, 3, 4);
         
         ctx.restore();
         
