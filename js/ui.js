@@ -1,5 +1,6 @@
 class UI {
     constructor(game) {
+        console.log('UI initialized successfully!');
         this.game = game;
         this.minimap = document.getElementById('minimap');
         this.minimapCtx = this.minimap.getContext('2d');
@@ -46,6 +47,9 @@ class UI {
         // Update weapon and power-up UI
         this.updateWeaponUI();
         this.updatePowerUpUI();
+        
+        // Update compact HUD
+        this.updateCompactHUD();
     }
     
     renderMinimap() {
@@ -434,6 +438,99 @@ class UI {
         `;
     }
     
+    /**
+     * Update compact HUD displaying money and weapon
+     */
+    updateCompactHUD() {
+        if (!this.game.player) return;
+        
+        // Get current money from progression system
+        const money = this.game.progression ? this.game.progression.money : 0;
+        
+        // Get current weapon info
+        const weaponInfo = this.game.player.weapon ? this.game.player.weapon.getInfo() : null;
+        
+        // Create or update compact HUD display
+        let compactHUD = document.getElementById('compact-hud');
+        if (!compactHUD) {
+            compactHUD = document.createElement('div');
+            compactHUD.id = 'compact-hud';
+            compactHUD.style.cssText = `
+                position: fixed;
+                top: 80px;
+                left: 10px;
+                background: rgba(0, 0, 0, 0.85);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-family: Arial, sans-serif;
+                font-size: 13px;
+                z-index: 1000;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+                min-width: 120px;
+            `;
+            document.body.appendChild(compactHUD);
+        }
+        
+        // Build HUD content
+        let hudContent = `
+            <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                <span style="color: #00ff00; font-weight: bold; margin-right: 6px;">💰</span>
+                <span style="color: #00ff00; font-weight: bold;">$${money}</span>
+            </div>
+        `;
+        
+        if (weaponInfo) {
+            const ammoColor = weaponInfo.ammo > 0 ? '#ffff00' : '#ff6666';
+            const weaponIcon = this.getWeaponIcon(weaponInfo.name);
+            
+            hudContent += `
+                <div style="display: flex; align-items: center;">
+                    <span style="margin-right: 6px;">${weaponIcon}</span>
+                    <div style="flex: 1;">
+                        <div style="color: #ffffff; font-size: 11px; font-weight: bold;">${weaponInfo.name}</div>
+                        <div style="color: ${ammoColor}; font-size: 10px;">
+                            ${weaponInfo.ammo}/${weaponInfo.maxAmmo}
+                            ${weaponInfo.isReloading ? ' (Reloading...)' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            hudContent += `
+                <div style="display: flex; align-items: center;">
+                    <span style="margin-right: 6px;">❌</span>
+                    <span style="color: #ff6666; font-size: 11px;">No Weapon</span>
+                </div>
+            `;
+        }
+        
+        compactHUD.innerHTML = hudContent;
+    }
+    
+    /**
+     * Get weapon icon based on weapon name
+     * @param {string} weaponName - Name of the weapon
+     * @returns {string} Weapon icon
+     */
+    getWeaponIcon(weaponName) {
+        const icons = {
+            'Pistol': '🔫',
+            'Shotgun': '🔫',
+            'Uzi': '🔫',
+            'Rifle': '🔫',
+            'Rocket Launcher': '🚀',
+            // Add fallbacks for different naming conventions
+            'pistol': '🔫',
+            'shotgun': '🔫', 
+            'uzi': '🔫',
+            'rifle': '🔫',
+            'rocket': '🚀'
+        };
+        return icons[weaponName] || '🔫';
+    }
+
     /**
      * Get power-up color
      * @param {string} type - Power-up type

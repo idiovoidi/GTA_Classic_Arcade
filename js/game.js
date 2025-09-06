@@ -206,6 +206,9 @@ class Game {
             this.progression = new PlayerProgression(this, this.player);
             this.progression.load(); // Load saved progression
             
+            // Initialize UI system
+            this.ui = new UI(this);
+            
             // Initialize zone system
             this.zoneManager.init();
             
@@ -539,6 +542,18 @@ class Game {
                     }
                 } catch (error) {
                     window.errorHandler?.handleGameError('progression_error', {
+                        message: error.message,
+                        stack: error.stack
+                    });
+                }
+            }
+            
+            // Update UI system
+            if (this.ui) {
+                try {
+                    this.ui.update(deltaTime);
+                } catch (error) {
+                    window.errorHandler?.handleGameError('ui_update_error', {
                         message: error.message,
                         stack: error.stack
                     });
@@ -1334,12 +1349,16 @@ class Game {
     }
     
     renderUI() {
-        // Update UI elements
+        // Update UI elements (fallback for basic display)
         document.getElementById('wantedLevel').textContent = `WANTED: ${this.wantedLevel}`;
         document.getElementById('score').textContent = `SCORE: ${this.score}`;
         
-        // Render minimap
-        this.renderMinimap();
+        // Use UI class minimap if available, otherwise fallback
+        if (this.ui && this.ui.renderMinimap) {
+            this.ui.renderMinimap();
+        } else {
+            this.renderMinimap();
+        }
     }
     
     renderMinimap() {
