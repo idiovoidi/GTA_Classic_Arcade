@@ -223,7 +223,13 @@ class PlayerProgression {
                 id: 'zone_explorer',
                 name: 'Zone Explorer',
                 description: 'Visit all zone types',
-                condition: () => this.stats.zones.visited.size >= 7,
+                condition: () => {
+                    // Ensure visited is a Set
+                    if (!(this.stats.zones.visited instanceof Set)) {
+                        this.stats.zones.visited = new Set(this.stats.zones.visited || []);
+                    }
+                    return this.stats.zones.visited.size >= 7;
+                },
                 reward: { money: 350, experience: 175 }
             }
         ];
@@ -516,6 +522,12 @@ class PlayerProgression {
     }
     
     recordZoneVisit(zoneType) {
+        // Ensure visited is a Set (defensive programming)
+        if (!(this.stats.zones.visited instanceof Set)) {
+            console.warn('zones.visited was not a Set, reinitializing...');
+            this.stats.zones.visited = new Set(this.stats.zones.visited || []);
+        }
+        
         const wasFirstVisit = !this.stats.zones.visited.has(zoneType);
         this.stats.zones.visited.add(zoneType);
         
@@ -613,6 +625,15 @@ class PlayerProgression {
     }
     
     save() {
+        // Convert Set to Array for serialization
+        const statsForSave = {
+            ...this.stats,
+            zones: {
+                ...this.stats.zones,
+                visited: Array.from(this.stats.zones.visited)
+            }
+        };
+        
         const saveData = {
             money: this.money,
             totalEarned: this.totalEarned,
@@ -620,7 +641,7 @@ class PlayerProgression {
             experience: this.experience,
             level: this.level,
             skillPoints: this.skillPoints,
-            stats: this.stats,
+            stats: statsForSave,
             skills: this.skills,
             achievements: Array.from(this.achievements.entries())
         };
@@ -649,6 +670,16 @@ class PlayerProgression {
             
             if (data.stats) {
                 Object.assign(this.stats, data.stats);
+                
+                // Restore Set from Array if it was saved as an array
+                if (data.stats.zones && data.stats.zones.visited) {
+                    if (Array.isArray(data.stats.zones.visited)) {
+                        this.stats.zones.visited = new Set(data.stats.zones.visited);
+                    } else if (!(data.stats.zones.visited instanceof Set)) {
+                        // Fallback if it's neither array nor set
+                        this.stats.zones.visited = new Set();
+                    }
+                }
             }
             
             if (data.skills) {
