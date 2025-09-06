@@ -90,13 +90,18 @@ class Vehicle {
         this.targetY = y;
         this.path = [];
         this.currentPathIndex = 0;
-        this.state = 'driving'; // driving, stopped, panicking
+        this.state = 'driving'; // driving, stopped, panicking, dead
         this.stopTimer = 0;
         this.panicTimer = 0;
         
         // Visual properties
         this.color = typeData.colors[Math.floor(Math.random() * typeData.colors.length)];
         this.tireMarks = [];
+        
+        // Death and corpse properties
+        this.corpse = null;
+        this.deathTime = 0;
+        this.wreckageCreated = false;
         
         // Vehicle-specific behavior modifiers
         this.setupVehicleBehavior();
@@ -347,13 +352,20 @@ class Vehicle {
         return angle;
     }
     
-    takeDamage(amount) {
+    takeDamage(amount, fromAngle = null) {
         this.health -= amount;
         
         // Vehicle-specific damage effects
-        if (this.health <= 0) {
+        if (this.health <= 0 && this.state !== 'dead') {
             this.state = 'dead';
+            this.deathTime = Date.now();
             this.createExplosion();
+            this.createVehicleWreckage(fromAngle);
+            
+            // Record kill in progression system
+            if (this.game.progression) {
+                this.game.progression.recordKill('vehicle');
+            }
             
             // Play vehicle-specific explosion sound
             if (this.game.audioManager) {
@@ -362,7 +374,7 @@ class Vehicle {
                                 'car_explosion';
                 this.game.audioManager.playSound(soundType, this.x, this.y);
             }
-        } else {
+        } else if (this.health > 0) {
             // Play damage sound
             if (this.game.audioManager) {
                 this.game.audioManager.playSound('car_damage', this.x, this.y);
@@ -429,8 +441,165 @@ class Vehicle {
         }
     }
     
+    /**
+     * Create persistent vehicle wreckage when destroyed
+     * @param {number} damageAngle - Optional angle from damage source
+     */
+    createVehicleWreckage(damageAngle = null) {
+        if (this.wreckageCreated) return;
+        this.wreckageCreated = true;
+        
+        // Create wreckage object with burned ground effects
+        this.corpse = {
+            x: this.x,
+            y: this.y,
+            angle: this.angle,
+            vehicleType: this.vehicleType,
+            originalColor: this.color,
+            width: this.width,
+            height: this.height,
+            burnMarks: this.createBurnMarks(),
+            debrisField: this.createDebrisField(damageAngle),
+            creationTime: Date.now(),
+            alpha: 1.0,
+            priority: this.calculateWreckagePriority()
+        };
+        
+        // Add wreckage to game's corpse management system
+        if (this.game.addCorpse) {
+            this.game.addCorpse(this.corpse);
+        } else {
+            // Fallback: create corpses array if it doesn't exist
+            if (!this.game.corpses) {
+                this.game.corpses = [];
+            }
+            this.game.corpses.push(this.corpse);
+        }
+    }
+    
+    /**
+     * Create burn marks on the ground around the wreckage
+     * @returns {Array} Array of burn mark objects
+     */
+    createBurnMarks() {
+        const marks = [];
+        const markCount = this.vehicleType === 'TRUCK' ? 12 : 
+                         this.vehicleType === 'MOTORCYCLE' ? 6 : 8;
+        
+        // Create main burn area
+        const mainBurnSize = this.vehicleType === 'TRUCK' ? 35 : 
+                            this.vehicleType === 'MOTORCYCLE' ? 15 : 25;
+        
+        marks.push({
+            x: this.x,
+            y: this.y,
+            size: mainBurnSize,
+            color: '#1a1a1a', // Dark burn mark
+            alpha: 0.8,
+            type: 'main'
+        });
+        
+        // Create scattered burn patches around the main area
+        for (let i = 0; i < markCount; i++) {
+            const angle = (i / markCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+            const distance = (this.width + this.height) * 0.3 + Math.random() * 20;
+            
+            marks.push({
+                x: this.x + Math.cos(angle) * distance,
+                y: this.y + Math.sin(angle) * distance,
+                size: 8 + Math.random() * 12,
+                color: ['#2a2a2a', '#333333', '#1a1a1a'][Math.floor(Math.random() * 3)],
+                alpha: 0.4 + Math.random() * 0.4,
+                type: 'scatter'
+            });
+        }
+        
+        return marks;
+    }
+    
+    /**
+     * Create debris field around the wreckage
+     * @param {number} damageAngle - Optional angle from damage source for directional debris
+     * @returns {Array} Array of debris objects
+     */
+    createDebrisField(damageAngle = null) {
+        const debris = [];
+        const debrisCount = this.vehicleType === 'TRUCK' ? 15 : 
+                           this.vehicleType === 'MOTORCYCLE' ? 8 : 12;
+        
+        for (let i = 0; i < debrisCount; i++) {
+            let angle;
+            
+            if (damageAngle !== null && Math.random() < 0.6) {
+                // 60% of debris flies in direction of damage (away from impact)
+                const spread = Math.PI / 3; // 60 degree spread
+                angle = damageAngle + (Math.random() - 0.5) * spread;
+            } else {
+                // Random direction
+                angle = Math.random() * Math.PI * 2;
+            }
+            
+            const distance = Math.random() * 40;
+            
+            debris.push({
+                x: this.x + Math.cos(angle) * distance,
+                y: this.y + Math.sin(angle) * distance,
+                size: 2 + Math.random() * 4,
+                color: this.getDebrisColor(),
+                angle: Math.random() * Math.PI * 2,
+                alpha: 0.6 + Math.random() * 0.4
+            });
+        }
+        
+        return debris;
+    }
+    
+    /**
+     * Get appropriate debris color based on vehicle type
+     * @returns {string} Debris color
+     */
+    getDebrisColor() {
+        const debrisColors = {
+            'TRUCK': ['#654321', '#8b4513', '#333333', '#666666'],
+            'SPORTS_CAR': ['#ff4757', '#333333', '#666666', '#999999'],
+            'MOTORCYCLE': ['#000000', '#333333', '#666666'],
+            'SEDAN': ['#333333', '#666666', '#999999', '#555555']
+        };
+        
+        const colors = debrisColors[this.vehicleType] || debrisColors['SEDAN'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    /**
+     * Calculate priority for wreckage cleanup (higher priority = keep longer)
+     * @returns {number} Priority score
+     */
+    calculateWreckagePriority() {
+        let priority = 1;
+        
+        // Higher priority for larger vehicles (more noticeable)
+        if (this.vehicleType === 'TRUCK') priority += 2;
+        else if (this.vehicleType === 'SPORTS_CAR') priority += 1;
+        
+        // Higher priority if closer to player
+        const distanceToPlayer = this.game.getDistance(this, this.game.player);
+        if (distanceToPlayer < 200) priority += 3;
+        else if (distanceToPlayer < 400) priority += 2;
+        else if (distanceToPlayer < 600) priority += 1;
+        
+        // Higher priority if visible on screen
+        if (this.game.isInViewport && this.game.isInViewport(this)) {
+            priority += 2;
+        }
+        
+        return priority;
+    }
+    
     render(ctx, lodLevel = 'high') {
-        if (this.state === 'dead') return;
+        if (this.state === 'dead') {
+            // Dead vehicles are now handled by wreckage/corpse system
+            return;
+        }
         
         // Skip detailed rendering for distant objects
         if (lodLevel === 'skip') return;

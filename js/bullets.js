@@ -147,7 +147,7 @@ class Bullet {
         
         // Apply damage to target
         if (target && typeof target.takeDamage === 'function') {
-            // Pass bullet angle for blood splatter direction
+            // Pass bullet angle for directional effects (blood splatter, debris direction)
             if (target.takeDamage.length > 1) {
                 target.takeDamage(this.damage, this.angle);
             } else {

@@ -50,6 +50,7 @@ class Game {
         this.particles = [];
         this.textEffects = [];
         this.corpses = []; // Persistent corpse system
+        this.corpses = []; // Persistent corpse system
         
         // Power-up system
         this.powerUpManager = null;
@@ -732,46 +733,7 @@ class Game {
             });
         });
     }
-    
-    updateCollisionsBruteForce() {
-        // Original collision detection code as fallback
-        // Player vs vehicles
-        this.vehicles.forEach(vehicle => {
-            if (vehicle.health > 0 && this.checkCollision(this.player, vehicle)) {
-                this.handleVehicleCollision(this.player, vehicle);
-            }
-        });
-        
-        // Player vs police
-        this.police.forEach(cop => {
-            if (cop.health > 0 && this.checkCollision(this.player, cop)) {
-                this.handleVehicleCollision(this.player, cop);
-            }
-        });
-        
-        // Vehicle vs vehicle collisions
-        for (let i = 0; i < this.vehicles.length; i++) {
-            for (let j = i + 1; j < this.vehicles.length; j++) {
-                const vehicle1 = this.vehicles[i];
-                const vehicle2 = this.vehicles[j];
-                
-                if (vehicle1.health > 0 && vehicle2.health > 0 && 
-                    this.checkCollision(vehicle1, vehicle2)) {
-                    this.handleVehicleCollision(vehicle1, vehicle2);
-                }
-            }
-        }
-        
-        // Vehicle vs police collisions
-        this.vehicles.forEach(vehicle => {
-            this.police.forEach(cop => {
-                if (vehicle.health > 0 && cop.health > 0 && 
-                    this.checkCollision(vehicle, cop)) {
-                    this.handleVehicleCollision(vehicle, cop);
-                }
-            });
-        });
-    }
+
     
     handleVehicleCollision(obj1, obj2) {
         // Calculate collision response
@@ -976,9 +938,6 @@ class Game {
         // Clean up excess corpses based on performance
         this.cleanupCorpses();
         
-        // Clean up excess corpses based on performance
-        this.cleanupCorpses();
-        
         // Force garbage collection hint (if available)
         if (window.gc) {
             window.gc();
@@ -1061,6 +1020,13 @@ class Game {
     calculateCorpsePriority(corpse) {
         let priority = 1;
         
+        // Higher priority for vehicle wrecks (more noticeable)
+        if (corpse.vehicleType) {
+            priority += 1;
+            if (corpse.vehicleType === 'TRUCK') priority += 2;
+            else if (corpse.vehicleType === 'SPORTS_CAR') priority += 1;
+        }
+        
         // Higher priority if closer to player
         const distanceToPlayer = Math.sqrt(
             Math.pow(corpse.x - this.player.x, 2) + 
@@ -1100,7 +1066,7 @@ class Game {
     }
     
     /**
-     * Render individual corpse with blood stains
+     * Render individual corpse with blood stains or vehicle wreckage
      * @param {CanvasRenderingContext2D} ctx - Canvas context
      * @param {Object} corpse - Corpse object to render
      */
@@ -1108,6 +1074,23 @@ class Game {
         ctx.save();
         ctx.globalAlpha = corpse.alpha;
         
+        if (corpse.vehicleType) {
+            // Render vehicle wreckage
+            this.renderVehicleWreckage(ctx, corpse);
+        } else {
+            // Render pedestrian corpse
+            this.renderPedestrianCorpse(ctx, corpse);
+        }
+        
+        ctx.restore();
+    }
+    
+    /**
+     * Render pedestrian corpse with blood stains
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {Object} corpse - Pedestrian corpse object
+     */
+    renderPedestrianCorpse(ctx, corpse) {
         // Render blood stains first (underneath corpse)
         if (corpse.bloodStains) {
             corpse.bloodStains.forEach(stain => {
@@ -1142,8 +1125,79 @@ class Game {
         ctx.beginPath();
         ctx.ellipse(0, 0, corpse.width * 0.8, corpse.height * 0.6, 0, 0, Math.PI * 2);
         ctx.fill();
+    }
+    
+    /**
+     * Render vehicle wreckage with burn marks and debris
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {Object} wreckage - Vehicle wreckage object
+     */
+    renderVehicleWreckage(ctx, wreckage) {
+        // Render burn marks first (ground layer)
+        if (wreckage.burnMarks) {
+            wreckage.burnMarks.forEach(mark => {
+                ctx.save();
+                ctx.globalAlpha = wreckage.alpha * mark.alpha;
+                ctx.fillStyle = mark.color;
+                
+                if (mark.type === 'main') {
+                    // Main burn area - elliptical
+                    ctx.beginPath();
+                    ctx.ellipse(mark.x, mark.y, mark.size * 0.8, mark.size * 0.6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Scattered burn patches - circular
+                    ctx.beginPath();
+                    ctx.arc(mark.x, mark.y, mark.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            });
+        }
         
-        ctx.restore();
+        // Render debris field
+        if (wreckage.debrisField) {
+            wreckage.debrisField.forEach(debris => {
+                ctx.save();
+                ctx.globalAlpha = wreckage.alpha * debris.alpha;
+                ctx.translate(debris.x, debris.y);
+                ctx.rotate(debris.angle);
+                ctx.fillStyle = debris.color;
+                ctx.fillRect(-debris.size / 2, -debris.size / 2, debris.size, debris.size);
+                ctx.restore();
+            });
+        }
+        
+        // Render destroyed vehicle shell (if any remains)
+        ctx.translate(wreckage.x, wreckage.y);
+        ctx.rotate(wreckage.angle);
+        
+        // Charred vehicle frame (very dark version of original)
+        const charredColor = this.adjustColorBrightness(wreckage.originalColor, 0.1);
+        ctx.globalAlpha = wreckage.alpha * 0.6;
+        ctx.fillStyle = charredColor;
+        
+        // Draw basic vehicle outline based on type
+        switch (wreckage.vehicleType) {
+            case 'TRUCK':
+                // Collapsed truck frame
+                ctx.fillRect(-wreckage.width / 2, -wreckage.height / 2, wreckage.width * 0.8, wreckage.height * 0.7);
+                break;
+            case 'MOTORCYCLE':
+                // Twisted motorcycle remains
+                ctx.fillRect(-wreckage.width / 3, -wreckage.height / 3, wreckage.width * 0.6, wreckage.height * 0.6);
+                break;
+            default:
+                // Collapsed car frame
+                ctx.fillRect(-wreckage.width / 2, -wreckage.height / 2, wreckage.width * 0.7, wreckage.height * 0.8);
+                break;
+        }
+        
+        // Add some metal debris on top
+        ctx.globalAlpha = wreckage.alpha * 0.8;
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(-wreckage.width / 4, -wreckage.height / 4, wreckage.width / 2, wreckage.height / 2);
     }
     
     /**
