@@ -143,41 +143,56 @@ class Pedestrian {
         }
     }
     
-    render(ctx) {
+    render(ctx, lodLevel = 'high') {
         if (this.state === 'dead') return;
+        
+        if (lodLevel === 'skip') return;
         
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.direction);
         
-        // Body
-        ctx.fillStyle = this.color;
-        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-        
-        // Head
-        ctx.fillStyle = '#ffdbac';
-        ctx.beginPath();
-        ctx.arc(0, -this.height / 2 - 2, 3, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Walking animation
-        if (this.state === 'walking' || this.state === 'panicking') {
-            const legOffset = Math.sin(this.animationFrame * 10) * 2;
-            ctx.fillStyle = '#000';
-            ctx.fillRect(-2, this.height / 2 - 2 + legOffset, 1, 4);
-            ctx.fillRect(1, this.height / 2 - 2 - legOffset, 1, 4);
-        }
-        
-        // Panic indicator
-        if (this.state === 'panicking') {
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(-1, -this.height / 2 - 6, 2, 2);
+        if (lodLevel === 'low') {
+            // Low detail: just a colored dot
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.width / 4, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (lodLevel === 'medium') {
+            // Medium detail: simple body shape
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.width / 4, -this.height / 4, this.width / 2, this.height / 2);
+        } else {
+            // High detail: full pedestrian rendering
+            // Body
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+            
+            // Head
+            ctx.fillStyle = '#ffdbac';
+            ctx.beginPath();
+            ctx.arc(0, -this.height / 2 - 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Walking animation
+            if (this.state === 'walking' || this.state === 'panicking') {
+                const legOffset = Math.sin(this.animationFrame * 10) * 2;
+                ctx.fillStyle = '#000';
+                ctx.fillRect(-2, this.height / 2 - 2 + legOffset, 1, 4);
+                ctx.fillRect(1, this.height / 2 - 2 - legOffset, 1, 4);
+            }
+            
+            // Panic indicator
+            if (this.state === 'panicking') {
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(-1, -this.height / 2 - 6, 2, 2);
+            }
         }
         
         ctx.restore();
         
-        // Health bar
-        if (this.health < this.maxHealth) {
+        // Health bar only at high detail
+        if (lodLevel === 'high' && this.health < this.maxHealth) {
             this.renderHealthBar(ctx);
         }
     }

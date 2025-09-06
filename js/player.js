@@ -17,6 +17,7 @@ class Player {
         this.health = 100;
         this.maxHealth = 100;
         this.radius = 15;
+        this.mass = 2; // Player car is heavier
         
         // Weapon system
         this.weapon = new Weapon('pistol', this.game);
@@ -30,6 +31,10 @@ class Player {
         // Shooting
         this.lastShot = 0;
         this.shootCooldown = 200; // milliseconds
+        
+        // Audio
+        this.engineSound = null;
+        this.lastEngineUpdate = 0;
         
         // Visual properties
         this.color = '#00ff00';
@@ -45,6 +50,7 @@ class Player {
         this.updateWeapon(deltaTime);
         this.updatePowerUps(deltaTime);
         this.updateInvincibility(deltaTime);
+        this.updateEngineSound(deltaTime);
         
         // Keep player within city bounds
         this.x = Math.max(0, Math.min(this.game.city.width, this.x));
@@ -211,6 +217,38 @@ class Player {
     }
     
     /**
+     * Update engine sound based on speed
+     * @param {number} deltaTime - Delta time
+     */
+    updateEngineSound(deltaTime) {
+        if (!this.game.audioManager) return;
+        
+        this.lastEngineUpdate += deltaTime;
+        
+        // Update engine sound every 100ms
+        if (this.lastEngineUpdate > 100) {
+            const speedRatio = Math.abs(this.speed) / this.maxSpeed;
+            const pitch = 0.8 + speedRatio * 0.6; // Pitch varies from 0.8 to 1.4
+            const volume = 0.2 + speedRatio * 0.3; // Volume varies from 0.2 to 0.5
+            
+            // Play engine sound if moving
+            if (Math.abs(this.speed) > 0.1) {
+                if (!this.engineSound || this.engineSound.playbackState === 'finished') {
+                    this.engineSound = this.game.audioManager.playSound('car_engine', volume, pitch, true);
+                }
+            } else {
+                // Stop engine sound when not moving
+                if (this.engineSound && this.engineSound.stop) {
+                    this.engineSound.stop();
+                    this.engineSound = null;
+                }
+            }
+            
+            this.lastEngineUpdate = 0;
+        }
+    }
+
+    /**
      * Update weapon
      * @param {number} deltaTime - Delta time
      */
@@ -266,6 +304,16 @@ class Player {
         
         // Fire weapon
         modifiedWeapon.fire(this.x, this.y, angle);
+        
+        // Add heat for shooting
+        if (this.game.addHeat) {
+            this.game.addHeat(this.game.wantedSystem.crimeHeat.shooting, 'shooting');
+        }
+        
+        // Record shot in progression system
+        if (this.game.progression) {
+            this.game.progression.recordShot(false); // Will be updated to true if hit is detected
+        }
     }
     
     /**
@@ -401,6 +449,12 @@ class Player {
         if (this.invincible) return;
         
         this.health -= damage;
+        
+        // Record damage taken in progression system
+        if (this.game.progression) {
+            this.game.progression.recordDamage(damage, 'taken');
+        }
+        
         if (this.health <= 0) {
             this.health = 0;
             // Handle death
@@ -438,8 +492,17 @@ class Player {
         this.activePowerUps.clear();
         this.invincible = false;
         
-        // Increase wanted level
-        this.game.increaseWantedLevel(1);
+        // Reduce wanted level significantly when player dies
+        if (this.game.addHeat) {
+            this.game.addHeat(-30, 'player_death'); // Reduce heat when dying
+        } else {
+            this.game.increaseWantedLevel(1); // Fallback to old system
+        }
+        
+        // Trigger death music
+        if (this.game.audioManager) {
+            this.game.audioManager.setMusicState('death');
+        }
     }
     
     /**
@@ -458,14 +521,6 @@ class Player {
                 maxDuration: powerUp.maxDuration
             }))
         };
-    }
-    
-    takeDamage(amount) {
-        this.health -= amount;
-        if (this.health <= 0) {
-            this.health = 0;
-            // Game over logic could go here
-        }
     }
     
     heal(amount) {

@@ -158,7 +158,11 @@ if (window.location.search.includes('debug=true')) {
                     console.log('F2 - Add health');
                     console.log('F3 - Add wanted level');
                     console.log('F4 - Spawn police');
-                    console.log('F5 - Spawn vehicle');
+                    console.log('F5 - Spawn random vehicle');
+                    console.log('F6 - Spawn sports car');
+                    console.log('F7 - Spawn truck');
+                    console.log('F8 - Spawn motorcycle');
+                    console.log('F9 - Show vehicle stats');
                     break;
                 case 'F2':
                     game.player.heal(25);
@@ -171,6 +175,23 @@ if (window.location.search.includes('debug=true')) {
                     break;
                 case 'F5':
                     game.spawnVehicle();
+                    break;
+                case 'F6':
+                    game.spawnSpecificVehicle('SPORTS_CAR');
+                    console.log('Spawned sports car');
+                    break;
+                case 'F7':
+                    game.spawnSpecificVehicle('TRUCK');
+                    console.log('Spawned truck');
+                    break;
+                case 'F8':
+                    game.spawnSpecificVehicle('MOTORCYCLE');
+                    console.log('Spawned motorcycle');
+                    break;
+                case 'F9':
+                    const stats = game.getVehicleTypeStats();
+                    console.log('Vehicle Type Stats:', stats);
+                    console.log('Total vehicles:', game.vehicles.length);
                     break;
             }
         }

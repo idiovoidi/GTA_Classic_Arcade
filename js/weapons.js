@@ -172,21 +172,39 @@ class Weapon {
      * @param {number} angle - Bullet angle
      */
     createBullet(x, y, angle) {
-        const bullet = new Bullet(
-            this.game,
-            x,
-            y,
-            angle,
-            this.config.bulletSpeed,
-            this.config.damage,
-            this.config.range,
-            this.config.bulletSize,
-            this.config.color,
-            this.config.explosive,
-            this.config.explosionRadius
-        );
-        
-        this.game.addBullet(bullet);
+        // Use object pooling if available
+        if (this.game.poolManager) {
+            const bullet = this.game.poolManager.createBullet(
+                x, y, angle,
+                this.config.bulletSpeed,
+                this.config.damage,
+                this.config.range,
+                this.config.bulletSize,
+                this.config.color,
+                this.config.explosive,
+                this.config.explosionRadius
+            );
+            
+            // Add to game bullets array for rendering
+            this.game.bullets.push(bullet);
+        } else {
+            // Fallback to direct creation
+            const bullet = new Bullet(
+                this.game,
+                x,
+                y,
+                angle,
+                this.config.bulletSpeed,
+                this.config.damage,
+                this.config.range,
+                this.config.bulletSize,
+                this.config.color,
+                this.config.explosive,
+                this.config.explosionRadius
+            );
+            
+            this.game.addBullet(bullet);
+        }
     }
     
     /**
@@ -209,18 +227,32 @@ class Weapon {
      * Play weapon sound
      */
     playSound() {
-        // Simple sound simulation - in a real game, you'd use Web Audio API
-        console.log(`Sound: ${this.config.sound}`);
+        // Play procedural sound using audio manager
+        if (this.game.audioManager) {
+            this.game.audioManager.playSound(this.config.sound);
+        } else {
+            // Fallback console log
+            console.log(`Sound: ${this.config.sound}`);
+        }
         
         // Create visual sound indicator
-        if (this.game.particles) {
-            this.game.particles.push(new Particle(
+        if (this.game.poolManager) {
+            const particle = this.game.poolManager.createParticle(
+                this.game.player.x,
+                this.game.player.y,
+                '#ffffff',
+                50,
+                2
+            );
+            this.game.particles.push(particle);
+        } else if (this.game.addParticle) {
+            this.game.addParticle(new Particle(
                 this.game,
                 this.game.player.x,
                 this.game.player.y,
                 '#ffffff',
                 50,
-                0.5
+                2
             ));
         }
     }
@@ -319,311 +351,6 @@ class Weapon {
     }
 }
 
-/**
- * Bullet class for projectiles
- */
-class Bullet {
-    constructor(game, x, y, angle, speed, damage, range, size, color, explosive = false, explosionRadius = 0) {
-        this.game = game;
-        this.x = x;
-        this.y = y;
-        this.angle = angle;
-        this.speed = speed;
-        this.damage = damage;
-        this.range = range;
-        this.size = size;
-        this.color = color;
-        this.explosive = explosive;
-        this.explosionRadius = explosionRadius;
-        
-        this.velocity = {
-            x: Math.cos(angle) * speed,
-            y: Math.sin(angle) * speed
-        };
-        
-        this.distanceTraveled = 0;
-        this.active = true;
-        this.trail = [];
-    }
-    
-    /**
-     * Update bullet
-     * @param {number} deltaTime - Delta time
-     */
-    update(deltaTime) {
-        if (!this.active) return;
-        
-        // Update position
-        this.x += this.velocity.x;
-        this.y += this.velocity.y;
-        this.distanceTraveled += this.speed;
-        
-        // Add to trail
-        this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > 5) {
-            this.trail.shift();
-        }
-        
-        // Check range
-        if (this.distanceTraveled >= this.range) {
-            this.destroy();
-            return;
-        }
-        
-        // Check collisions
-        this.checkCollisions();
-    }
-    
-    /**
-     * Check for collisions
-     */
-    checkCollisions() {
-        // Check collision with pedestrians
-        this.game.pedestrians.forEach(ped => {
-            if (this.checkCollision(ped)) {
-                ped.takeDamage(this.damage);
-                this.hit(ped.x, ped.y);
-            }
-        });
-        
-        // Check collision with vehicles
-        this.game.vehicles.forEach(vehicle => {
-            if (this.checkCollision(vehicle)) {
-                vehicle.takeDamage(this.damage);
-                this.hit(vehicle.x, vehicle.y);
-            }
-        });
-        
-        // Check collision with police
-        this.game.police.forEach(cop => {
-            if (this.checkCollision(cop)) {
-                cop.takeDamage(this.damage);
-                this.hit(cop.x, cop.y);
-            }
-        });
-        
-        // Check collision with buildings
-        if (this.game.city) {
-            this.game.city.buildings.forEach(building => {
-                if (this.checkBuildingCollision(building)) {
-                    this.hit(this.x, this.y);
-                }
-            });
-        }
-    }
-    
-    /**
-     * Check collision with entity
-     * @param {Object} entity - Entity to check
-     * @returns {boolean} Whether collision occurred
-     */
-    checkCollision(entity) {
-        if (!entity || !entity.active) return false;
-        
-        const dx = this.x - entity.x;
-        const dy = this.y - entity.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance < (this.size + (entity.radius || 10));
-    }
-    
-    /**
-     * Check collision with building
-     * @param {Object} building - Building to check
-     * @returns {boolean} Whether collision occurred
-     */
-    checkBuildingCollision(building) {
-        return this.x >= building.x && 
-               this.x <= building.x + building.width &&
-               this.y >= building.y && 
-               this.y <= building.y + building.height;
-    }
-    
-    /**
-     * Handle bullet hit
-     * @param {number} x - Hit X position
-     * @param {number} y - Hit Y position
-     */
-    hit(x, y) {
-        // Create hit effect
-        this.createHitEffect(x, y);
-        
-        // Create explosion if explosive
-        if (this.explosive) {
-            this.createExplosion(x, y);
-        }
-        
-        this.destroy();
-    }
-    
-    /**
-     * Create hit effect
-     * @param {number} x - X position
-     * @param {number} y - Y position
-     */
-    createHitEffect(x, y) {
-        // Create sparks
-        for (let i = 0; i < 5; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 3 + 1;
-            this.game.particles.push(new Particle(
-                this.game,
-                x,
-                y,
-                '#ffff00',
-                speed,
-                0.5,
-                angle
-            ));
-        }
-    }
-    
-    /**
-     * Create explosion effect
-     * @param {number} x - X position
-     * @param {number} y - Y position
-     */
-    createExplosion(x, y) {
-        // Create explosion particles
-        for (let i = 0; i < 20; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 8 + 2;
-            const color = ['#ff0000', '#ff6600', '#ffff00'][Math.floor(Math.random() * 3)];
-            this.game.particles.push(new Particle(
-                this.game,
-                x,
-                y,
-                color,
-                speed,
-                1.0,
-                angle
-            ));
-        }
-        
-        // Damage entities in explosion radius
-        this.damageEntitiesInRadius(x, y, this.explosionRadius);
-    }
-    
-    /**
-     * Damage entities in explosion radius
-     * @param {number} x - X position
-     * @param {number} y - Y position
-     * @param {number} radius - Explosion radius
-     */
-    damageEntitiesInRadius(x, y, radius) {
-        const entities = [
-            ...this.game.pedestrians,
-            ...this.game.vehicles,
-            ...this.game.police
-        ];
-        
-        entities.forEach(entity => {
-            if (!entity || !entity.active) return;
-            
-            const dx = entity.x - x;
-            const dy = entity.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance <= radius) {
-                const damage = this.damage * (1 - distance / radius);
-                entity.takeDamage(damage);
-            }
-        });
-    }
-    
-    /**
-     * Render bullet
-     * @param {CanvasRenderingContext2D} ctx - Canvas context
-     */
-    render(ctx) {
-        if (!this.active) return;
-        
-        // Render trail
-        if (this.trail.length > 1) {
-            ctx.strokeStyle = `${this.color}80`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(this.trail[0].x, this.trail[0].y);
-            for (let i = 1; i < this.trail.length; i++) {
-                ctx.lineTo(this.trail[i].x, this.trail[i].y);
-            }
-            ctx.stroke();
-        }
-        
-        // Render bullet
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Add glow effect
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 5;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    }
-    
-    /**
-     * Destroy bullet
-     */
-    destroy() {
-        this.active = false;
-    }
-}
-
-/**
- * Particle class for effects
- */
-class Particle {
-    constructor(game, x, y, color, speed, life, angle = null) {
-        this.game = game;
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.speed = speed;
-        this.life = life;
-        this.maxLife = life;
-        this.angle = angle || Math.random() * Math.PI * 2;
-        
-        this.velocity = {
-            x: Math.cos(this.angle) * speed,
-            y: Math.sin(this.angle) * speed
-        };
-        
-        this.active = true;
-    }
-    
-    /**
-     * Update particle
-     * @param {number} deltaTime - Delta time
-     */
-    update(deltaTime) {
-        if (!this.active) return;
-        
-        this.x += this.velocity.x;
-        this.y += this.velocity.y;
-        this.life -= deltaTime / 1000;
-        
-        if (this.life <= 0) {
-            this.active = false;
-        }
-    }
-    
-    /**
-     * Render particle
-     * @param {CanvasRenderingContext2D} ctx - Canvas context
-     */
-    render(ctx) {
-        if (!this.active) return;
-        
-        const alpha = this.life / this.maxLife;
-        ctx.fillStyle = `${this.color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
 
 // Export classes
 window.Weapon = Weapon;
-window.Bullet = Bullet;
-window.Particle = Particle;

@@ -26,6 +26,12 @@ class UI {
         this.wantedLevel.textContent = `WANTED: ${this.game.wantedLevel}`;
         this.score.textContent = `SCORE: ${this.game.score}`;
         
+        // Update time display
+        this.updateTimeDisplay();
+        
+        // Update progression display
+        this.updateProgressionUI();
+        
         // Update wanted level color based on level
         if (this.game.wantedLevel === 0) {
             this.wantedLevel.style.color = '#00ff00';
@@ -333,6 +339,99 @@ class UI {
         });
         
         powerUpDisplay.innerHTML = powerUpHTML;
+    }
+    
+    /**
+     * Update time display from day/night cycle
+     */
+    updateTimeDisplay() {
+        if (!this.game.dayNightCycle) return;
+        
+        const timeInfo = this.game.dayNightCycle.getTimeInfo();
+        
+        // Create or update time display
+        let timeDisplay = document.getElementById('time-display');
+        if (!timeDisplay) {
+            timeDisplay = document.createElement('div');
+            timeDisplay.id = 'time-display';
+            timeDisplay.style.cssText = `
+                position: fixed;
+                top: 40px;
+                left: 10px;
+                color: ${timeInfo.isDay ? '#ffff00' : '#add8e6'};
+                font-size: 16px;
+                font-weight: bold;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+                z-index: 1000;
+            `;
+            document.body.appendChild(timeDisplay);
+        }
+        
+        // Update time color based on day/night
+        timeDisplay.style.color = timeInfo.isDay ? '#ffff00' : '#add8e6';
+        
+        const period = timeInfo.isDay ? '☀️' : '🌙';
+        timeDisplay.textContent = `${period} ${timeInfo.timeString}`;
+    }
+    
+    /**
+     * Update progression UI display
+     */
+    updateProgressionUI() {
+        if (!this.game.progression) return;
+        
+        const progression = this.game.progression;
+        
+        // Create or update progression display
+        let progressionDisplay = document.getElementById('progression-display');
+        if (!progressionDisplay) {
+            progressionDisplay = document.createElement('div');
+            progressionDisplay.id = 'progression-display';
+            progressionDisplay.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                z-index: 1000;
+                min-width: 180px;
+            `;
+            document.body.appendChild(progressionDisplay);
+        }
+        
+        const expPercent = Math.floor((progression.experience / progression.experienceToNextLevel) * 100);
+        const accuracyPercent = Math.floor(progression.stats.combat.accuracy * 100);
+        
+        progressionDisplay.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 8px; color: #00ff00;">Player Progress</div>
+            
+            <div style="margin-bottom: 5px;">
+                <div style="color: #ffff00;">💰 Money: $${progression.money}</div>
+            </div>
+            
+            <div style="margin-bottom: 5px;">
+                <div style="color: #00ffff;">🎯 Level: ${progression.level}</div>
+                <div style="color: #888; font-size: 10px;">XP: ${progression.experience}/${progression.experienceToNextLevel} (${expPercent}%)</div>
+                <div style="background: #333; height: 3px; border-radius: 2px; margin-top: 1px;">
+                    <div style="background: #00ffff; height: 100%; width: ${expPercent}%; border-radius: 2px;"></div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 5px;">
+                <div style="color: #ff00ff;">⭐ Skill Points: ${progression.skillPoints}</div>
+            </div>
+            
+            <div style="margin-bottom: 5px; font-size: 11px; color: #ccc;">
+                <div>💀 Kills: ${progression.stats.kills.total}</div>
+                <div>🎯 Accuracy: ${accuracyPercent}%</div>
+                <div>🚗 Distance: ${Math.floor(progression.stats.distance.total)}m</div>
+                <div>✅ Missions: ${progression.stats.missions.completed}</div>
+            </div>
+        `;
     }
     
     /**

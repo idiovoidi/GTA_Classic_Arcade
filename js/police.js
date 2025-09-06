@@ -8,12 +8,14 @@ class Police {
         this.radius = 12;
         this.health = 50;
         this.maxHealth = 50;
+        this.mass = 1.8; // Police cars are reinforced
         
         // Movement and AI
         this.speed = 1.5;
         this.angle = 0;
         this.targetX = x;
         this.targetY = y;
+        this.velocity = { x: 0, y: 0 }; // Add velocity for collision physics
         this.state = 'patrolling'; // patrolling, chasing, attacking
         this.alertLevel = 0; // 0-100
         this.lastSeenPlayerX = 0;
@@ -51,8 +53,13 @@ class Police {
         
         if (distance > 5) {
             this.angle = Math.atan2(dy, dx);
-            this.x += Math.cos(this.angle) * this.speed;
-            this.y += Math.sin(this.angle) * this.speed;
+            this.velocity.x = Math.cos(this.angle) * this.speed;
+            this.velocity.y = Math.sin(this.angle) * this.speed;
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+        } else {
+            this.velocity.x = 0;
+            this.velocity.y = 0;
         }
         
         // Keep within city bounds
@@ -155,12 +162,18 @@ class Police {
                 this.game.player.x - this.x
             );
             
-            const bullet = new PoliceBullet(
+            const bullet = new Bullet(
                 this.game,
                 this.x + Math.cos(angle) * 20,
                 this.y + Math.sin(angle) * 20,
-                angle
+                angle,
+                6, // speed
+                15, // damage
+                180, // range
+                2, // size
+                '#00ffff' // color
             );
+            bullet.owner = 'police'; // Mark as police bullet
             
             this.game.addBullet(bullet);
             this.lastShot = Date.now();
@@ -198,48 +211,72 @@ class Police {
         }
     }
     
-    render(ctx) {
+    render(ctx, lodLevel = 'high') {
+        if (lodLevel === 'skip') return;
+        
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
         
-        // Police car body
-        ctx.fillStyle = this.color;
-        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-        
-        // Police car details
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, this.height - 4);
-        
-        // Windshield
-        ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, 8);
-        
-        // Police lights
-        if (this.sirenOn) {
-            ctx.fillStyle = '#ff0000';
+        if (lodLevel === 'low') {
+            // Low detail: just a blue square
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.width / 4, -this.height / 4, this.width / 2, this.height / 2);
+        } else if (lodLevel === 'medium') {
+            // Medium detail: basic police car shape
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+            
+            // Basic police lights
+            if (this.sirenOn) {
+                ctx.fillStyle = '#ff0000';
+            } else {
+                ctx.fillStyle = '#0000ff';
+            }
             ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, 4, 4);
-            ctx.fillRect(this.width / 2 - 6, -this.height / 2 + 2, 4, 4);
         } else {
-            ctx.fillStyle = '#0000ff';
-            ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, 4, 4);
-            ctx.fillRect(this.width / 2 - 6, -this.height / 2 + 2, 4, 4);
+            // High detail: full police car rendering
+            // Police car body
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+            
+            // Police car details
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, this.width - 4, this.height - 4);
+            
+            // Windshield
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(-this.width / 2 + 4, -this.height / 2 + 4, this.width - 8, 8);
+            
+            // Police lights
+            if (this.sirenOn) {
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, 4, 4);
+                ctx.fillRect(this.width / 2 - 6, -this.height / 2 + 2, 4, 4);
+            } else {
+                ctx.fillStyle = '#0000ff';
+                ctx.fillRect(-this.width / 2 + 2, -this.height / 2 + 2, 4, 4);
+                ctx.fillRect(this.width / 2 - 6, -this.height / 2 + 2, 4, 4);
+            }
+            
+            // Direction indicator
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(this.width / 2 - 2, -2, 4, 4);
         }
-        
-        // Direction indicator
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(this.width / 2 - 2, -2, 4, 4);
         
         ctx.restore();
         
-        // Alert level indicator
-        if (this.alertLevel > 0) {
-            this.renderAlertIndicator(ctx);
-        }
-        
-        // Health bar
-        if (this.health < this.maxHealth) {
-            this.renderHealthBar(ctx);
+        // Only show detailed UI at high detail
+        if (lodLevel === 'high') {
+            // Alert level indicator
+            if (this.alertLevel > 0) {
+                this.renderAlertIndicator(ctx);
+            }
+            
+            // Health bar
+            if (this.health < this.maxHealth) {
+                this.renderHealthBar(ctx);
+            }
         }
     }
     
@@ -276,36 +313,5 @@ class Police {
     }
 }
 
-class PoliceBullet extends Bullet {
-    constructor(game, x, y, angle) {
-        super(game, x, y, angle);
-        this.speed = 6;
-        this.damage = 15;
-        this.color = '#00ffff';
-    }
-    
-    update(deltaTime) {
-        this.x += Math.cos(this.angle) * this.speed;
-        this.y += Math.sin(this.angle) * this.speed;
-        this.life--;
-        
-        // Check collision with player
-        if (this.game.checkCollision(this, this.game.player)) {
-            this.game.player.takeDamage(this.damage);
-            this.life = 0;
-        }
-        
-        // Remove if out of bounds
-        if (this.x < 0 || this.x > this.game.city.width || 
-            this.y < 0 || this.y > this.game.city.height) {
-            this.life = 0;
-        }
-    }
-    
-    render(ctx) {
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
+// Export Police class
+window.Police = Police;

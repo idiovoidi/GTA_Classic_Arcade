@@ -216,17 +216,22 @@ class PowerUp {
      * Play collection sound
      */
     playSound() {
-        console.log(`Sound: ${this.config.sound}`);
+        // Play pickup sound using audio manager
+        if (this.game.audioManager) {
+            this.game.audioManager.playSound('pickup', 0.6);
+        } else {
+            console.log(`Sound: ${this.config.sound}`);
+        }
         
         // Create sound particle
-        if (this.game.particles) {
-            this.game.particles.push(new Particle(
+        if (this.game.addParticle) {
+            this.game.addParticle(new Particle(
                 this.game,
                 this.x,
                 this.y,
                 this.config.color,
-                2,
-                0.5
+                20,
+                2
             ));
         }
     }
@@ -239,15 +244,18 @@ class PowerUp {
         for (let i = 0; i < 10; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 4 + 2;
-            this.game.particles.push(new Particle(
-                this.game,
-                this.x,
-                this.y,
-                this.config.color,
-                speed,
-                1.0,
-                angle
-            ));
+                if (this.game.addParticle) {
+                    this.game.addParticle(new Particle(
+                        this.game,
+                        this.x,
+                        this.y,
+                        this.config.color,
+                        20,
+                        2,
+                        angle,
+                        speed
+                    ));
+                }
         }
         
         // Create text effect
@@ -269,6 +277,8 @@ class PowerUp {
         
         if (this.game.textEffects) {
             this.game.textEffects.push(textEffect);
+        } else if (this.game.powerUpManager && this.game.powerUpManager.textEffects) {
+            this.game.powerUpManager.textEffects.push(textEffect);
         }
     }
     
