@@ -147,8 +147,8 @@ class Player {
         this.x += this.velocity.x;
         this.y += this.velocity.y;
         
-        // Add tire marks when moving fast
-        if (Math.abs(this.speed) > 1) {
+        // Add tire marks when moving
+        if (Math.abs(this.speed) > 0.5) { // Reasonable threshold for tire marks
             this.addTireMark();
         }
         
@@ -161,30 +161,65 @@ class Player {
     updateTireMarks() {
         this.tireMarks.forEach(mark => {
             mark.life -= 1;
+            // Reduce burn time for boost marks
+            if (mark.boost && mark.burnTime > 0) {
+                mark.burnTime -= 1;
+            }
         });
         this.tireMarks = this.tireMarks.filter(mark => mark.life > 0);
     }
     
     addTireMark() {
-        if (Math.random() < 0.3) { // Only add marks occasionally
+        if (Math.random() < 0.6) { // Moderate frequency for visible trail
+            // Create tire marks for both sides of the vehicle
+            const sideOffset = this.height * 0.3; // Distance from center to tire position
+            
+            // Left tire mark
             this.tireMarks.push({
-                x: this.x + (Math.random() - 0.5) * this.width,
-                y: this.y + (Math.random() - 0.5) * this.height,
+                x: this.x + Math.cos(this.angle + Math.PI/2) * sideOffset,
+                y: this.y + Math.sin(this.angle + Math.PI/2) * sideOffset,
                 angle: this.angle,
-                life: 100,
-                boost: false
+                life: 180, // Standard tire mark duration
+                boost: false,
+                side: 'left'
+            });
+            
+            // Right tire mark
+            this.tireMarks.push({
+                x: this.x + Math.cos(this.angle - Math.PI/2) * sideOffset,
+                y: this.y + Math.sin(this.angle - Math.PI/2) * sideOffset,
+                angle: this.angle,
+                life: 180,
+                boost: false,
+                side: 'right'
             });
         }
     }
     
     addBoostTireMark() {
-        if (Math.random() < 0.6) { // More frequent boost marks
+        if (Math.random() < 0.8) { // More frequent for boost effect
+            const sideOffset = this.height * 0.3;
+            
+            // Left boost tire mark with burning effect
             this.tireMarks.push({
-                x: this.x + (Math.random() - 0.5) * this.width,
-                y: this.y + (Math.random() - 0.5) * this.height,
+                x: this.x + Math.cos(this.angle + Math.PI/2) * sideOffset,
+                y: this.y + Math.sin(this.angle + Math.PI/2) * sideOffset,
                 angle: this.angle,
-                life: 150, // Boost marks last longer
-                boost: true
+                life: 220, // Boost marks last slightly longer
+                boost: true,
+                side: 'left',
+                burnTime: 30 // Brief burning glow period
+            });
+            
+            // Right boost tire mark with burning effect
+            this.tireMarks.push({
+                x: this.x + Math.cos(this.angle - Math.PI/2) * sideOffset,
+                y: this.y + Math.sin(this.angle - Math.PI/2) * sideOffset,
+                angle: this.angle,
+                life: 220,
+                boost: true,
+                side: 'right',
+                burnTime: 30
             });
         }
     }
@@ -234,14 +269,27 @@ class Player {
             ctx.translate(mark.x, mark.y);
             ctx.rotate(mark.angle);
             
+            // Calculate alpha based on remaining life
+            const alpha = mark.life / (mark.boost ? 220 : 180);
+            
             if (mark.boost) {
-                // Boost tire marks are brighter and wider
-                ctx.fillStyle = `rgba(255, 100, 0, ${mark.life / 150})`;
+                // Boost tire marks with subtle burning glow when fresh
+                const isBurning = mark.burnTime > 0;
+                
+                if (isBurning) {
+                    // Brief burning glow effect
+                    const glowAlpha = (mark.burnTime / 30) * 0.3;
+                    ctx.fillStyle = `rgba(255, 150, 80, ${glowAlpha})`;
+                    ctx.fillRect(-4, -2, 8, 4);
+                }
+                
+                // Standard dark tire mark (slightly darker for boost)
+                ctx.fillStyle = `rgba(40, 40, 40, ${alpha * 0.8})`;
                 ctx.fillRect(-3, -1.5, 6, 3);
             } else {
-                // Normal tire marks
-                ctx.fillStyle = `rgba(100, 100, 100, ${mark.life / 100})`;
-                ctx.fillRect(-2, -1, 4, 2);
+                // Standard black/grey tire marks
+                ctx.fillStyle = `rgba(60, 60, 60, ${alpha * 0.7})`;
+                ctx.fillRect(-2.5, -1.5, 5, 3);
             }
             
             ctx.restore();
