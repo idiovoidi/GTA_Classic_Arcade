@@ -44,6 +44,10 @@ class Game {
         this.vehicles = [];
         this.bullets = [];
         this.particles = [];
+        this.textEffects = [];
+        
+        // Power-up system
+        this.powerUpManager = null;
         
         // Game stats
         this.score = 0;
@@ -97,6 +101,7 @@ class Game {
             // Initialize game objects
             this.city = new City(this);
             this.player = new Player(this, this.width / 2, this.height / 2);
+            this.powerUpManager = new PowerUpManager(this);
             
             // Spawn initial pedestrians
             for (let i = 0; i < 20; i++) {
@@ -259,6 +264,34 @@ class Game {
                 });
             }, 'particle') || [];
             
+            // Update power-up manager
+            if (this.powerUpManager) {
+                try {
+                    this.powerUpManager.update(deltaTime);
+                } catch (error) {
+                    window.errorHandler?.handleGameError('powerup_manager_error', {
+                        message: error.message,
+                        stack: error.stack
+                    });
+                }
+            }
+            
+            // Update text effects
+            this.textEffects = window.ErrorWrappers?.safeArrayOperation(this.textEffects, (effects) => {
+                return effects.filter((effect, index) => {
+                    try {
+                        effect.update(deltaTime);
+                        return effect.active;
+                    } catch (error) {
+                        window.errorHandler?.handleGameError('text_effect_error', {
+                            message: error.message,
+                            index: index
+                        });
+                        return false;
+                    }
+                });
+            }, 'text_effect') || [];
+            
             // Spawn new pedestrians occasionally
             if (Math.random() < 0.01) {
                 this.spawnPedestrian();
@@ -359,8 +392,22 @@ class Game {
                 }, `particle_${index}`);
             });
             
+            // Render power-ups
+            if (this.powerUpManager) {
+                window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
+                    this.powerUpManager.render(ctx);
+                }, 'powerup_manager');
+            }
+            
             // Restore context
             this.ctx.restore();
+            
+            // Render text effects (not affected by camera)
+            this.textEffects.forEach((effect, index) => {
+                window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
+                    effect.render(ctx);
+                }, `text_effect_${index}`);
+            });
             
             // Render UI
             this.renderUI();

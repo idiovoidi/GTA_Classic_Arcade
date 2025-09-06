@@ -16,6 +16,16 @@ class Player {
         this.velocity = { x: 0, y: 0 };
         this.health = 100;
         this.maxHealth = 100;
+        this.radius = 15;
+        
+        // Weapon system
+        this.weapon = new Weapon('pistol', this.game);
+        this.weapons = ['pistol', 'shotgun', 'uzi', 'rifle', 'rocket'];
+        this.currentWeaponIndex = 0;
+        
+        // Power-up system
+        this.powerUps = new Map();
+        this.activePowerUps = new Map();
         
         // Shooting
         this.lastShot = 0;
@@ -24,12 +34,17 @@ class Player {
         // Visual properties
         this.color = '#00ff00';
         this.tireMarks = [];
+        this.invincible = false;
+        this.invincibilityTimer = 0;
     }
     
     update(deltaTime) {
         this.handleInput();
         this.updatePhysics();
         this.updateTireMarks();
+        this.updateWeapon(deltaTime);
+        this.updatePowerUps(deltaTime);
+        this.updateInvincibility(deltaTime);
         
         // Keep player within city bounds
         this.x = Math.max(0, Math.min(this.game.city.width, this.x));
@@ -61,6 +76,24 @@ class Player {
         // Handbrake
         if (keys['Space']) {
             this.speed *= 0.9;
+        }
+        
+        // Weapon switching
+        if (keys['Digit1']) {
+            this.switchWeapon(0); // Pistol
+        } else if (keys['Digit2']) {
+            this.switchWeapon(1); // Shotgun
+        } else if (keys['Digit3']) {
+            this.switchWeapon(2); // Uzi
+        } else if (keys['Digit4']) {
+            this.switchWeapon(3); // Rifle
+        } else if (keys['Digit5']) {
+            this.switchWeapon(4); // Rocket
+        }
+        
+        // Reload
+        if (keys['KeyR']) {
+            this.reloadWeapon();
         }
         
         // Shooting
@@ -103,32 +136,18 @@ class Player {
         }
     }
     
-    shoot() {
-        const mouseWorldX = this.game.mouse.x + this.game.camera.x;
-        const mouseWorldY = this.game.mouse.y + this.game.camera.y;
-        
-        const angle = Math.atan2(mouseWorldY - this.y, mouseWorldX - this.x);
-        
-        const bullet = new Bullet(
-            this.game,
-            this.x + Math.cos(angle) * 30,
-            this.y + Math.sin(angle) * 30,
-            angle
-        );
-        
-        this.game.addBullet(bullet);
-        
-        // Add muzzle flash particle
-        this.game.addParticle(new Particle(
-            this.x + Math.cos(angle) * 30,
-            this.y + Math.sin(angle) * 30,
-            '#ffff00',
-            10,
-            0.5
-        ));
-    }
-    
     render(ctx) {
+        // Render invincibility effect
+        if (this.invincible) {
+            ctx.save();
+            ctx.globalAlpha = 0.5 + 0.5 * Math.sin(this.invincibilityTimer * 0.01);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
@@ -168,6 +187,11 @@ class Player {
         
         // Draw health bar
         this.renderHealthBar(ctx);
+        
+        // Render weapon
+        if (this.weapon) {
+            this.weapon.render(ctx);
+        }
     }
     
     renderHealthBar(ctx) {
@@ -186,6 +210,256 @@ class Player {
         ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
     }
     
+    /**
+     * Update weapon
+     * @param {number} deltaTime - Delta time
+     */
+    updateWeapon(deltaTime) {
+        if (this.weapon) {
+            this.weapon.update(deltaTime);
+        }
+    }
+    
+    /**
+     * Switch weapon
+     * @param {number} weaponIndex - Weapon index
+     */
+    switchWeapon(weaponIndex) {
+        if (weaponIndex >= 0 && weaponIndex < this.weapons.length) {
+            this.currentWeaponIndex = weaponIndex;
+            this.weapon = new Weapon(this.weapons[weaponIndex], this.game);
+        }
+    }
+    
+    /**
+     * Reload current weapon
+     */
+    reloadWeapon() {
+        if (this.weapon && !this.weapon.isReloading) {
+            this.weapon.startReload();
+        }
+    }
+    
+    /**
+     * Shoot weapon
+     */
+    shoot() {
+        if (!this.weapon) return;
+        
+        // Calculate shooting angle towards mouse
+        const mouseX = this.game.mouse.x + this.game.camera.x;
+        const mouseY = this.game.mouse.y + this.game.camera.y;
+        const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
+        
+        // Apply power-up modifiers
+        let modifiedWeapon = this.weapon;
+        if (this.activePowerUps.has('rapid_fire')) {
+            modifiedWeapon = this.createModifiedWeapon('rapid_fire');
+        }
+        if (this.activePowerUps.has('multi_shot')) {
+            this.shootMultiShot(angle);
+            return;
+        }
+        if (this.activePowerUps.has('explosive_ammo')) {
+            modifiedWeapon = this.createModifiedWeapon('explosive_ammo');
+        }
+        
+        // Fire weapon
+        modifiedWeapon.fire(this.x, this.y, angle);
+    }
+    
+    /**
+     * Shoot multiple bullets (multi-shot power-up)
+     * @param {number} angle - Base shooting angle
+     */
+    shootMultiShot(angle) {
+        const multiShotCount = this.activePowerUps.get('multi_shot')?.value || 3;
+        const spread = 0.3; // radians
+        
+        for (let i = 0; i < multiShotCount; i++) {
+            const offset = (i - (multiShotCount - 1) / 2) * spread / multiShotCount;
+            const shotAngle = angle + offset;
+            this.weapon.fire(this.x, this.y, shotAngle);
+        }
+    }
+    
+    /**
+     * Create modified weapon for power-ups
+     * @param {string} powerUpType - Power-up type
+     * @returns {Weapon} Modified weapon
+     */
+    createModifiedWeapon(powerUpType) {
+        const modifiedWeapon = new Weapon(this.weapon.type, this.game);
+        
+        if (powerUpType === 'rapid_fire') {
+            const multiplier = this.activePowerUps.get('rapid_fire')?.value || 0.3;
+            modifiedWeapon.config.fireRate *= multiplier;
+        }
+        
+        if (powerUpType === 'explosive_ammo') {
+            modifiedWeapon.config.explosive = true;
+            modifiedWeapon.config.explosionRadius = 50;
+        }
+        
+        return modifiedWeapon;
+    }
+    
+    /**
+     * Update power-ups
+     * @param {number} deltaTime - Delta time
+     */
+    updatePowerUps(deltaTime) {
+        // Update active power-ups
+        for (const [type, powerUp] of this.activePowerUps) {
+            powerUp.duration -= deltaTime;
+            
+            if (powerUp.duration <= 0) {
+                this.removePowerUp(type);
+            }
+        }
+    }
+    
+    /**
+     * Add power-up
+     * @param {string} type - Power-up type
+     * @param {number} value - Power-up value
+     * @param {number} duration - Power-up duration
+     */
+    addPowerUp(type, value, duration) {
+        this.activePowerUps.set(type, {
+            value: value,
+            duration: duration,
+            maxDuration: duration
+        });
+        
+        // Apply immediate effects
+        this.applyPowerUpEffect(type, value);
+    }
+    
+    /**
+     * Remove power-up
+     * @param {string} type - Power-up type
+     */
+    removePowerUp(type) {
+        this.activePowerUps.delete(type);
+        this.removePowerUpEffect(type);
+    }
+    
+    /**
+     * Apply power-up effect
+     * @param {string} type - Power-up type
+     * @param {number} value - Power-up value
+     */
+    applyPowerUpEffect(type, value) {
+        switch (type) {
+            case 'speed':
+                this.maxSpeed *= value;
+                break;
+            case 'damage':
+                // Damage multiplier is handled in weapon creation
+                break;
+            case 'invincibility':
+                this.invincible = true;
+                this.invincibilityTimer = 0;
+                break;
+        }
+    }
+    
+    /**
+     * Remove power-up effect
+     * @param {string} type - Power-up type
+     */
+    removePowerUpEffect(type) {
+        switch (type) {
+            case 'speed':
+                this.maxSpeed = 4; // Reset to default
+                break;
+            case 'damage':
+                // Damage multiplier is handled in weapon creation
+                break;
+            case 'invincibility':
+                this.invincible = false;
+                break;
+        }
+    }
+    
+    /**
+     * Update invincibility
+     * @param {number} deltaTime - Delta time
+     */
+    updateInvincibility(deltaTime) {
+        if (this.invincible) {
+            this.invincibilityTimer += deltaTime;
+        }
+    }
+    
+    /**
+     * Take damage (with invincibility check)
+     * @param {number} damage - Damage amount
+     */
+    takeDamage(damage) {
+        if (this.invincible) return;
+        
+        this.health -= damage;
+        if (this.health <= 0) {
+            this.health = 0;
+            // Handle death
+            this.handleDeath();
+        }
+    }
+    
+    /**
+     * Handle player death
+     */
+    handleDeath() {
+        // Create death effect
+        for (let i = 0; i < 20; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 5 + 2;
+            this.game.particles.push(new Particle(
+                this.game,
+                this.x,
+                this.y,
+                '#ff0000',
+                speed,
+                1.0,
+                angle
+            ));
+        }
+        
+        // Reset player
+        this.health = this.maxHealth;
+        this.x = this.game.city.width / 2;
+        this.y = this.game.city.height / 2;
+        this.speed = 0;
+        this.velocity = { x: 0, y: 0 };
+        
+        // Clear power-ups
+        this.activePowerUps.clear();
+        this.invincible = false;
+        
+        // Increase wanted level
+        this.game.increaseWantedLevel(1);
+    }
+    
+    /**
+     * Get player info for UI
+     * @returns {Object} Player information
+     */
+    getInfo() {
+        return {
+            health: this.health,
+            maxHealth: this.maxHealth,
+            weapon: this.weapon ? this.weapon.getInfo() : null,
+            powerUps: Array.from(this.activePowerUps.entries()).map(([type, powerUp]) => ({
+                type: type,
+                value: powerUp.value,
+                duration: powerUp.duration,
+                maxDuration: powerUp.maxDuration
+            }))
+        };
+    }
+    
     takeDamage(amount) {
         this.health -= amount;
         if (this.health <= 0) {
@@ -196,92 +470,5 @@ class Player {
     
     heal(amount) {
         this.health = Math.min(this.maxHealth, this.health + amount);
-    }
-}
-
-class Bullet {
-    constructor(game, x, y, angle) {
-        this.game = game;
-        this.x = x;
-        this.y = y;
-        this.angle = angle;
-        this.speed = 8;
-        this.life = 100;
-        this.damage = 25;
-        this.radius = 2;
-    }
-    
-    update(deltaTime) {
-        this.x += Math.cos(this.angle) * this.speed;
-        this.y += Math.sin(this.angle) * this.speed;
-        this.life--;
-        
-        // Check collisions with pedestrians
-        this.game.pedestrians.forEach(ped => {
-            if (this.game.checkCollision(this, ped)) {
-                ped.takeDamage(this.damage);
-                this.life = 0;
-            }
-        });
-        
-        // Check collisions with vehicles
-        this.game.vehicles.forEach(vehicle => {
-            if (this.game.checkCollision(this, vehicle)) {
-                vehicle.takeDamage(this.damage);
-                this.life = 0;
-            }
-        });
-        
-        // Check collisions with police
-        this.game.police.forEach(cop => {
-            if (this.game.checkCollision(this, cop)) {
-                cop.takeDamage(this.damage);
-                this.life = 0;
-            }
-        });
-        
-        // Remove if out of bounds
-        if (this.x < 0 || this.x > this.game.city.width || 
-            this.y < 0 || this.y > this.game.city.height) {
-            this.life = 0;
-        }
-    }
-    
-    render(ctx) {
-        ctx.fillStyle = '#ffff00';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-class Particle {
-    constructor(x, y, color, life, size = 2) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.life = life;
-        this.maxLife = life;
-        this.size = size;
-        this.velocity = {
-            x: (Math.random() - 0.5) * 2,
-            y: (Math.random() - 0.5) * 2
-        };
-    }
-    
-    update(deltaTime) {
-        this.x += this.velocity.x;
-        this.y += this.velocity.y;
-        this.life--;
-        this.velocity.x *= 0.98;
-        this.velocity.y *= 0.98;
-    }
-    
-    render(ctx) {
-        const alpha = this.life / this.maxLife;
-        ctx.fillStyle = this.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
-        ctx.fill();
     }
 }

@@ -36,6 +36,10 @@ class UI {
         } else {
             this.wantedLevel.style.color = '#ff0000';
         }
+        
+        // Update weapon and power-up UI
+        this.updateWeaponUI();
+        this.updatePowerUpUI();
     }
     
     renderMinimap() {
@@ -239,5 +243,152 @@ class UI {
         
         document.body.appendChild(overlay);
         return overlay;
+    }
+    
+    /**
+     * Update weapon UI
+     */
+    updateWeaponUI() {
+        if (!this.game.player || !this.game.player.weapon) return;
+        
+        const weaponInfo = this.game.player.weapon.getInfo();
+        
+        // Create or update weapon display
+        let weaponDisplay = document.getElementById('weapon-display');
+        if (!weaponDisplay) {
+            weaponDisplay = document.createElement('div');
+            weaponDisplay.id = 'weapon-display';
+            weaponDisplay.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                z-index: 1000;
+            `;
+            document.body.appendChild(weaponDisplay);
+        }
+        
+        const ammoColor = weaponInfo.ammo > 0 ? '#00ff00' : '#ff0000';
+        const reloadText = weaponInfo.isReloading ? 
+            ` (Reloading: ${Math.round(weaponInfo.reloadProgress * 100)}%)` : '';
+        
+        weaponDisplay.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 5px;">${weaponInfo.name}</div>
+            <div style="color: ${ammoColor};">Ammo: ${weaponInfo.ammo}/${weaponInfo.maxAmmo}${reloadText}</div>
+        `;
+    }
+    
+    /**
+     * Update power-up UI
+     */
+    updatePowerUpUI() {
+        if (!this.game.player) return;
+        
+        const playerInfo = this.game.player.getInfo();
+        const activePowerUps = playerInfo.powerUps;
+        
+        // Create or update power-up display
+        let powerUpDisplay = document.getElementById('powerup-display');
+        if (!powerUpDisplay) {
+            powerUpDisplay = document.createElement('div');
+            powerUpDisplay.id = 'powerup-display';
+            powerUpDisplay.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                z-index: 1000;
+                max-width: 200px;
+            `;
+            document.body.appendChild(powerUpDisplay);
+        }
+        
+        if (activePowerUps.length === 0) {
+            powerUpDisplay.innerHTML = '<div>No Power-ups Active</div>';
+            return;
+        }
+        
+        let powerUpHTML = '<div style="font-weight: bold; margin-bottom: 5px;">Active Power-ups:</div>';
+        activePowerUps.forEach(powerUp => {
+            const progress = (powerUp.duration / powerUp.maxDuration) * 100;
+            const color = this.getPowerUpColor(powerUp.type);
+            powerUpHTML += `
+                <div style="margin-bottom: 3px; color: ${color};">
+                    ${this.getPowerUpIcon(powerUp.type)} ${this.getPowerUpName(powerUp.type)}
+                    <div style="background: #333; height: 3px; border-radius: 2px; margin-top: 2px;">
+                        <div style="background: ${color}; height: 100%; width: ${progress}%; border-radius: 2px;"></div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        powerUpDisplay.innerHTML = powerUpHTML;
+    }
+    
+    /**
+     * Get power-up color
+     * @param {string} type - Power-up type
+     * @returns {string} Color
+     */
+    getPowerUpColor(type) {
+        const colors = {
+            health: '#00ff00',
+            ammo: '#ffff00',
+            speed: '#00ffff',
+            damage: '#ff0000',
+            invincibility: '#ff00ff',
+            rapid_fire: '#ff6600',
+            multi_shot: '#6600ff',
+            explosive_ammo: '#ff0066'
+        };
+        return colors[type] || '#ffffff';
+    }
+    
+    /**
+     * Get power-up icon
+     * @param {string} type - Power-up type
+     * @returns {string} Icon
+     */
+    getPowerUpIcon(type) {
+        const icons = {
+            health: '❤️',
+            ammo: '🔫',
+            speed: '⚡',
+            damage: '💥',
+            invincibility: '🛡️',
+            rapid_fire: '🔥',
+            multi_shot: '🎯',
+            explosive_ammo: '💣'
+        };
+        return icons[type] || '❓';
+    }
+    
+    /**
+     * Get power-up name
+     * @param {string} type - Power-up type
+     * @returns {string} Name
+     */
+    getPowerUpName(type) {
+        const names = {
+            health: 'Health',
+            ammo: 'Ammo',
+            speed: 'Speed Boost',
+            damage: 'Damage Boost',
+            invincibility: 'Invincibility',
+            rapid_fire: 'Rapid Fire',
+            multi_shot: 'Multi Shot',
+            explosive_ammo: 'Explosive Ammo'
+        };
+        return names[type] || 'Unknown';
     }
 }
