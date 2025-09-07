@@ -49,41 +49,19 @@ class Game {
         
         // Game objects
         this.player = null;
+// Game objects
+        this.player = null;
         this.city = null;
         this.pedestrians = [];
         this.police = [];
         this.tanks = [];
+        this.soldiers = []; // Add soldiers array
         this.vehicles = [];
         this.bullets = [];
         this.particles = [];
         this.textEffects = [];
         this.corpses = []; // Persistent corpse system
         this.corpses = []; // Persistent corpse system
-        
-        // Power-up system
-        this.powerUpManager = null;
-        
-        // Audio system
-        this.audioManager = null;
-        
-        // Traffic light system
-        this.trafficLightManager = null;
-        
-        // Day/night cycle system
-        this.dayNightCycle = null;
-        
-        // District system
-        this.districtManager = null;
-        
-        // Weather system
-        this.weatherSystem = null;
-        
-        // Spatial partitioning for collision optimization
-        this.spatialGrid = null;
-        this.showSpatialGrid = false; // Debug option
-        
-        // Object pooling for performance
-        this.poolManager = null;
         
         // Vehicle variety manager
         this.vehicleManager = {
@@ -146,6 +124,7 @@ class Game {
                 killPolice: 50,
                 destroyVehicle: 25,
                 destroyTank: 75,
+                killSoldier: 60, // Add soldier kill heat
                 shooting: 5,
                 collision: 3,
                 speeding: 1
@@ -474,6 +453,36 @@ class Game {
                 });
             }, 'tank') || [];
             
+            // Update soldiers with safe array operations
+            if (this.soldiers) {
+                this.soldiers = window.ErrorWrappers?.safeArrayOperation(this.soldiers, (soldiers) => {
+                    return soldiers.filter((soldier, index) => {
+                        try {
+                            window.ErrorWrappers?.safeAIUpdate(soldier, deltaTime, 'soldier');
+                            if (soldier.health <= 0) {
+                                this.score += 200;
+                                this.addHeat(this.wantedSystem.crimeHeat.killSoldier, 'soldier_kill');
+                                
+                                // Record kill in progression system
+                                if (this.progression) {
+                                    this.progression.recordKill('soldier');
+                                }
+                                
+                                return false; // Remove from array
+                            }
+                            return true; // Keep in array
+                        } catch (error) {
+                            window.errorHandler?.handleGameError('soldier_update_error', {
+                                message: error.message,
+                                index: index,
+                                soldier: soldier ? { x: soldier.x, y: soldier.y, health: soldier.health } : null
+                            });
+                            return false; // Remove problematic soldier
+                        }
+                    });
+                }, 'soldier') || [];
+            }
+            
             // Update bullets with object pooling
             if (this.poolManager) {
                 const poolResults = this.poolManager.update(deltaTime);
@@ -762,6 +771,7 @@ class Game {
             ...this.vehicles,
             ...this.police,
             ...this.tanks,
+            ...(this.soldiers || []), // Add soldiers to spatial grid
             ...this.bullets,
             ...(this.powerUpManager ? this.powerUpManager.powerUps : [])
         ].filter(obj => obj && obj.health > 0 && obj.active !== false);
@@ -828,6 +838,16 @@ class Game {
             }
         });
         
+        // Player vs soldiers
+        if (this.soldiers) {
+            this.soldiers.forEach(soldier => {
+                if (soldier.health > 0 && this.checkCollision(this.player, soldier)) {
+                    // Handle soldier collision (different from vehicle collision)
+                    this.handlePedestrianCollision(this.player, soldier);
+                }
+            });
+        }
+        
         // Vehicle vs vehicle collisions
         for (let i = 0; i < this.vehicles.length; i++) {
             for (let j = i + 1; j < this.vehicles.length; j++) {
@@ -857,6 +877,17 @@ class Game {
                     this.handleVehicleCollision(vehicle, tank);
                 }
             });
+            
+            // Vehicle vs soldier collisions
+            if (this.soldiers) {
+                this.soldiers.forEach(soldier => {
+                    if (vehicle.health > 0 && soldier.health > 0 && 
+                        this.checkCollision(vehicle, soldier)) {
+                        // Handle soldier collision (similar to pedestrian collision)
+                        this.handlePedestrianCollision(vehicle, soldier);
+                    }
+                });
+            }
         });
     }
 
@@ -948,6 +979,46 @@ class Game {
                 }
             }
         }
+    }
+    
+    /**
+     * Handle collision between player and pedestrian/soldier
+     * @param {Object} player - Player object
+     * @param {Object} pedestrian - Pedestrian or soldier object
+     */
+    handlePedestrianCollision(player, pedestrian) {
+        // Apply damage to pedestrian/soldier
+        if (pedestrian.takeDamage) {
+            // Damage based on player speed
+            const playerSpeed = Math.sqrt(
+                player.velocity.x * player.velocity.x + 
+                player.velocity.y * player.velocity.y
+            );
+            const damage = Math.max(10, Math.floor(playerSpeed * 5));
+            pedestrian.takeDamage(damage);
+            
+            // Add heat for killing pedestrians/soldiers
+            if (pedestrian.health <= 0) {
+                if (pedestrian.constructor.name === 'SoldierTroop') {
+                    this.addHeat(this.wantedSystem.crimeHeat.killSoldier, 'kill_soldier');
+                } else {
+                    this.addHeat(this.wantedSystem.crimeHeat.killPedestrian, 'kill_pedestrian');
+                }
+            }
+        }
+        
+        // Apply minor damage to player
+        if (player.takeDamage) {
+            player.takeDamage(5);
+        }
+        
+        // Play collision sound
+        if (this.audioManager) {
+            this.audioManager.playSound('impact', 0.3);
+        }
+        
+        // Add camera shake
+        this.addCameraShake(3, 100);
     }
     
     createCollisionEffect(x, y, intensity) {
@@ -1097,10 +1168,27 @@ class Game {
             this.police = this.police.slice(0, this.memoryManager.maxEntities.police);
         }
         
+        // Remove excess soldiers (but keep active attackers)
+        if (this.soldiers && this.soldiers.length > this.memoryManager.maxEntities.pedestrians) {
+            this.soldiers.sort((a, b) => {
+                // Prioritize active soldiers over distance
+                if (a.state === 'attacking' && b.state !== 'attacking') return -1;
+                if (b.state === 'attacking' && a.state !== 'attacking') return 1;
+                
+                const distA = this.getDistance(a, this.player);
+                const distB = this.getDistance(b, this.player);
+                return distA - distB;
+            });
+            this.soldiers = this.soldiers.slice(0, this.memoryManager.maxEntities.pedestrians);
+        }
+        
         // Clean up dead entities
         this.pedestrians = this.pedestrians.filter(ped => ped.health > 0);
         this.vehicles = this.vehicles.filter(vehicle => vehicle.health > 0);
         this.police = this.police.filter(cop => cop.health > 0);
+        if (this.soldiers) {
+            this.soldiers = this.soldiers.filter(soldier => soldier.health > 0);
+        }
         
         // Clean up excess corpses based on performance
         this.cleanupCorpses();
@@ -1397,7 +1485,8 @@ class Game {
                 police: this.police.length,
                 bullets: this.bullets.length,
                 particles: this.particles.length,
-                corpses: this.corpses ? this.corpses.length : 0
+                corpses: this.corpses ? this.corpses.length : 0,
+                soldiers: this.soldiers ? this.soldiers.length : 0
             },
             limits: this.memoryManager.maxEntities,
             poolStats: this.poolManager ? this.poolManager.getStats() : null,
@@ -1460,6 +1549,11 @@ class Game {
         // Spawn tanks when wanted level reaches 6
         if (currentLevel === 6) {
             this.updateTankSpawning(deltaTime);
+        }
+        
+        // Spawn soldiers when wanted level reaches 5
+        if (currentLevel >= 5) {
+            this.updateSoldierSpawning(deltaTime);
         }
     }
     
@@ -1560,6 +1654,57 @@ class Game {
             }
             return true; // Keep active tanks
         });
+    }
+    
+    // Soldier spawning system
+    updateSoldierSpawning(deltaTime) {
+        // Limit to 3-5 soldiers maximum on screen at once
+        if (this.soldiers && this.soldiers.length >= 5) return;
+        
+        // Spawn soldiers with a reasonable chance
+        if (Math.random() < 0.008) { // Moderate spawn chance
+            this.spawnSoldier();
+        }
+        
+        // Update existing soldiers and remove dead ones
+        if (this.soldiers) {
+            this.soldiers = this.soldiers.filter(soldier => {
+                if (soldier.health <= 0) {
+                    this.score += 200; // Score for killing soldiers
+                    this.addHeat(this.wantedSystem.crimeHeat.killSoldier, 'soldier_kill');
+                    return false; // Remove dead soldiers
+                }
+                return true; // Keep alive soldiers
+            });
+        } else {
+            this.soldiers = []; // Initialize soldiers array if it doesn't exist
+        }
+    }
+    
+    spawnSoldier() {
+        // Spawn ahead of player on roads for ambush
+        const playerDirection = Math.atan2(this.player.velocity.y, this.player.velocity.x);
+        const ambushDistance = 250; // Between police roadblocks and tank ambushes
+        const spawnX = this.player.x + Math.cos(playerDirection) * ambushDistance;
+        const spawnY = this.player.y + Math.sin(playerDirection) * ambushDistance;
+        
+        // Ensure spawn position is within bounds
+        const boundedX = Math.max(0, Math.min(this.city.width, spawnX));
+        const boundedY = Math.max(0, Math.min(this.city.height, spawnY));
+        
+        // Create soldier
+        const soldier = new SoldierTroop(this, boundedX, boundedY);
+        if (!this.soldiers) {
+            this.soldiers = [];
+        }
+        this.soldiers.push(soldier);
+        
+        // Play soldier spawn sound
+        if (this.audioManager) {
+            this.audioManager.playSound('pedestrian_death', boundedX, boundedY); // TODO: Add proper soldier spawn sound
+        }
+        
+        console.log(`Soldier spawned at wanted level ${this.wantedSystem.level}`);
     }
     
     spawnTank() {
@@ -1737,6 +1882,20 @@ class Game {
                     }
                 }
             });
+            
+            // Render soldiers - with culling and LOD
+            if (this.soldiers) {
+                this.soldiers.forEach((soldier, index) => {
+                    if (this.isInViewport(soldier)) {
+                        const lodLevel = this.getLODLevel(soldier);
+                        if (lodLevel !== 'skip') {
+                            window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
+                                soldier.render(ctx, lodLevel);
+                            }, `soldier_${index}`);
+                        }
+                    }
+                });
+            }
             
             // Render corpses (ground layer after entities)
             this.renderCorpses();

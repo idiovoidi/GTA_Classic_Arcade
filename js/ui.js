@@ -610,4 +610,467 @@ class UI {
         };
         return names[type] || 'Unknown';
     }
+    
+    /**
+     * Show black market shop interface
+     * @param {Zone} zone - Black market zone
+     */
+    showBlackMarketShop(zone) {
+        // Create shop overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'black-market-shop';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        `;
+        
+        // Create shop window
+        const shopWindow = document.createElement('div');
+        shopWindow.style.cssText = `
+            background: #2a0a2a;
+            border: 2px solid #800080;
+            border-radius: 10px;
+            width: 600px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        // Shop header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            background: #4b0082;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        `;
+        
+        const title = document.createElement('h2');
+        title.textContent = 'BLACK MARKET';
+        title.style.cssText = `
+            margin: 0;
+            color: #fff;
+            font-size: 24px;
+        `;
+        
+        const moneyDisplay = document.createElement('div');
+        moneyDisplay.id = 'shop-money';
+        moneyDisplay.style.cssText = `
+            color: #00ff00;
+            font-size: 18px;
+            font-weight: bold;
+        `;
+        moneyDisplay.textContent = `💰 $${this.game.progression.money}`;
+        
+        header.appendChild(title);
+        header.appendChild(moneyDisplay);
+        
+        // Close button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff0000;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 2001;
+        `;
+        closeButton.onclick = () => {
+            document.body.removeChild(overlay);
+        };
+        
+        // Shop content
+        const content = document.createElement('div');
+        content.style.cssText = `
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        `;
+        
+        // Generate item list
+        const itemList = document.createElement('div');
+        itemList.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        `;
+        
+        // Available power-ups based on zone level
+        const availablePowerUps = this.getAvailablePowerUps(zone);
+        
+        availablePowerUps.forEach(item => {
+            const itemCard = this.createItemCard(item, zone);
+            itemList.appendChild(itemCard);
+        });
+        
+        content.appendChild(itemList);
+        
+        shopWindow.appendChild(header);
+        shopWindow.appendChild(content);
+        overlay.appendChild(shopWindow);
+        overlay.appendChild(closeButton);
+        
+        document.body.appendChild(overlay);
+    }
+    
+    /**
+     * Get available power-ups for black market based on zone level
+     * @param {Zone} zone - Black market zone
+     * @returns {Array} Available power-ups
+     */
+    getAvailablePowerUps(zone) {
+        // Define shop inventory
+        const shopInventory = {
+            health: {
+                id: 'health',
+                name: 'Health Pack',
+                description: 'Restores 50 health points',
+                price: 100,
+                icon: '❤️',
+                type: 'health',
+                value: 50,
+                duration: 0
+            },
+            ammo: {
+                id: 'ammo',
+                name: 'Ammo Pack',
+                description: 'Refills current weapon ammo',
+                price: 150,
+                icon: '🔫',
+                type: 'ammo',
+                value: 0,
+                duration: 0
+            },
+            speed: {
+                id: 'speed',
+                name: 'Speed Boost',
+                description: 'Increases speed by 50% for 10 seconds',
+                price: 200,
+                icon: '⚡',
+                type: 'speed',
+                value: 1.5,
+                duration: 10000
+            },
+            damage: {
+                id: 'damage',
+                name: 'Damage Boost',
+                description: 'Doubles weapon damage for 15 seconds',
+                price: 250,
+                icon: '💥',
+                type: 'damage',
+                value: 2.0,
+                duration: 15000
+            },
+            rapid_fire: {
+                id: 'rapid_fire',
+                name: 'Rapid Fire',
+                description: 'Increases fire rate by 70% for 12 seconds',
+                price: 300,
+                icon: '🔥',
+                type: 'rapid_fire',
+                value: 0.3,
+                duration: 12000
+            },
+            multi_shot: {
+                id: 'multi_shot',
+                name: 'Multi Shot',
+                description: 'Fires 3 bullets per shot for 10 seconds',
+                price: 350,
+                icon: '🎯',
+                type: 'multi_shot',
+                value: 3,
+                duration: 10000
+            },
+            invincibility: {
+                id: 'invincibility',
+                name: 'Invincibility',
+                description: 'Become invincible for 8 seconds',
+                price: 500,
+                icon: '🛡️',
+                type: 'invincibility',
+                value: 1,
+                duration: 8000
+            },
+            explosive_ammo: {
+                id: 'explosive_ammo',
+                name: 'Explosive Ammo',
+                description: 'All bullets explode on impact for 20 seconds',
+                price: 450,
+                icon: '💣',
+                type: 'explosive_ammo',
+                value: 1,
+                duration: 20000
+            },
+            boost_refill: {
+                id: 'boost_refill',
+                name: 'Boost Refill',
+                description: 'Refills vehicle boost by 50 points',
+                price: 120,
+                icon: '🚀',
+                type: 'boost_refill',
+                value: 50,
+                duration: 0
+            }
+        };
+        
+        // Filter available items based on zone level
+        let availableItems = [
+            shopInventory.health,
+            shopInventory.ammo,
+            shopInventory.speed,
+            shopInventory.damage
+        ];
+        
+        if (zone.level >= 2) {
+            availableItems.push(
+                shopInventory.rapid_fire,
+                shopInventory.multi_shot
+            );
+        }
+        
+        if (zone.level >= 3) {
+            availableItems.push(
+                shopInventory.invincibility,
+                shopInventory.explosive_ammo
+            );
+        }
+        
+        // Always include boost refill
+        availableItems.push(shopInventory.boost_refill);
+        
+        return availableItems;
+    }
+    
+    /**
+     * Create item card for shop
+     * @param {Object} item - Item data
+     * @param {Zone} zone - Black market zone
+     * @returns {HTMLElement} Item card element
+     */
+    createItemCard(item, zone) {
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: rgba(128, 0, 128, 0.3);
+            border: 1px solid #800080;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.2s;
+        `;
+        
+        card.onmouseover = () => {
+            card.style.background = 'rgba(128, 0, 128, 0.5)';
+            card.style.transform = 'translateY(-2px)';
+        };
+        
+        card.onmouseout = () => {
+            card.style.background = 'rgba(128, 0, 128, 0.3)';
+            card.style.transform = 'translateY(0)';
+        };
+        
+        // Item icon and name
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        `;
+        
+        const icon = document.createElement('span');
+        icon.style.cssText = `
+            font-size: 24px;
+            margin-right: 10px;
+        `;
+        icon.textContent = item.icon;
+        
+        const name = document.createElement('h3');
+        name.style.cssText = `
+            margin: 0;
+            color: #fff;
+            font-size: 16px;
+        `;
+        name.textContent = item.name;
+        
+        header.appendChild(icon);
+        header.appendChild(name);
+        
+        // Item description
+        const description = document.createElement('p');
+        description.style.cssText = `
+            color: #ccc;
+            font-size: 12px;
+            margin: 0 0 15px 0;
+            flex: 1;
+        `;
+        description.textContent = item.description;
+        
+        // Price and purchase button
+        const footer = document.createElement('div');
+        footer.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const price = document.createElement('div');
+        price.style.cssText = `
+            color: #00ff00;
+            font-weight: bold;
+        `;
+        price.textContent = `$${item.price}`;
+        
+        const purchaseButton = document.createElement('button');
+        purchaseButton.textContent = 'Buy';
+        purchaseButton.style.cssText = `
+            background: #800080;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        `;
+        
+        // Check if player can afford item
+        if (this.game.progression.money < item.price) {
+            purchaseButton.disabled = true;
+            purchaseButton.style.background = '#666';
+            purchaseButton.title = 'Insufficient funds';
+        } else {
+            purchaseButton.onclick = () => {
+                this.purchaseItem(item, zone);
+            };
+        }
+        
+        footer.appendChild(price);
+        footer.appendChild(purchaseButton);
+        
+        card.appendChild(header);
+        card.appendChild(description);
+        card.appendChild(footer);
+        
+        return card;
+    }
+    
+    /**
+     * Purchase item from black market
+     * @param {Object} item - Item to purchase
+     * @param {Zone} zone - Black market zone
+     */
+    purchaseItem(item, zone) {
+        // Check if player has enough money
+        if (this.game.progression.money < item.price) {
+            this.showShopMessage('Insufficient funds!', '#ff0000');
+            return;
+        }
+        
+        // Deduct money
+        this.game.progression.spendMoney(item.price, `black_market_${item.id}`);
+        
+        // Update money display
+        const moneyDisplay = document.getElementById('shop-money');
+        if (moneyDisplay) {
+            moneyDisplay.textContent = `💰 $${this.game.progression.money}`;
+        }
+        
+        // Give player the power-up
+        if (this.game.powerUpManager) {
+            this.game.powerUpManager.givePlayerPowerUp(item.type);
+        }
+        
+        // Show success message
+        this.showShopMessage(`Purchased ${item.name}!`, '#00ff00');
+        
+        // Update purchase button states
+        this.updatePurchaseButtons();
+        
+        // Set cooldown on zone
+        zone.cooldownTimer = zone.cooldownDuration;
+    }
+    
+    /**
+     * Show shop message
+     * @param {string} message - Message to display
+     * @param {string} color - Color of the message
+     */
+    showShopMessage(message, color) {
+        // Remove any existing messages
+        const existingMessage = document.getElementById('shop-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        // Create message element
+        const messageElement = document.createElement('div');
+        messageElement.id = 'shop-message';
+        messageElement.textContent = message;
+        messageElement.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: ${color};
+            padding: 15px 25px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 2002;
+            pointer-events: none;
+            animation: fadeInOut 2s ease-in-out;
+        `;
+        
+        // Add animation style
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; }
+                20% { opacity: 1; }
+                80% { opacity: 1; }
+                100% { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(messageElement);
+        
+        // Remove message after animation
+        setTimeout(() => {
+            if (messageElement.parentNode) {
+                messageElement.parentNode.removeChild(messageElement);
+                if (style.parentNode) {
+                    style.parentNode.removeChild(style);
+                }
+            }
+        }, 2000);
+    }
+    
+    /**
+     * Update purchase buttons based on current money
+     */
+    updatePurchaseButtons() {
+        // This would be called if we had a way to update all buttons dynamically
+        // For now, we'll rely on page refresh when shop is reopened
+    }
 }

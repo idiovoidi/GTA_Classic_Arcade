@@ -490,6 +490,15 @@ class Tank extends Vehicle {
         ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : '#ff0000';
         ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
     }
+    
+    patrol() {
+        // Simple patrol behavior - move to random points
+        if (Math.random() < 0.01) { // 1% chance each frame
+            const roadPos = this.game.city.getRandomRoadPosition();
+            this.targetX = roadPos.x;
+            this.targetY = roadPos.y;
+        }
+    }
 }
 
 // Export Tank class

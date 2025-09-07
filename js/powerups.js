@@ -411,6 +411,40 @@ class PowerUpManager {
     }
     
     /**
+     * Give player a specific power-up
+     * @param {string} type - Power-up type
+     */
+    givePlayerPowerUp(type) {
+        // Find power-up configuration
+        const powerUp = new PowerUp(this.game, 0, 0, type);
+        
+        // Apply power-up effect to player
+        if (this.game.player) {
+            this.game.player.addPowerUp(
+                powerUp.config.effect,
+                powerUp.config.value,
+                powerUp.config.duration
+            );
+            
+            // Create collection effect
+            if (this.game.addTextEffect) {
+                this.game.addTextEffect(
+                    this.game.player.x,
+                    this.game.player.y - 30,
+                    powerUp.config.name,
+                    powerUp.config.color,
+                    2000
+                );
+            }
+        }
+        
+        // Play pickup sound
+        if (this.game.audioManager) {
+            this.game.audioManager.playSound('powerup_pickup');
+        }
+    }
+    
+    /**
      * Update power-up manager
      * @param {number} deltaTime - Delta time
      */

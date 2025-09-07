@@ -343,18 +343,23 @@ class Zone {
     }
     
     openBlackMarket() {
-        // Give random power-up
-        if (this.game.powerUpManager) {
-            const powerUpType = this.powerUpTypes[Math.floor(Math.random() * this.powerUpTypes.length)];
-            this.game.powerUpManager.givePlayerPowerUp(powerUpType);
-            
-            this.cooldownTimer = this.cooldownDuration;
-            
-            this.game.addTextEffect(this.x + this.width/2, this.y + this.height + 10, 
-                `Power-up acquired!`, '#800080', 2000);
+        // Show black market shop UI instead of giving random power-up
+        if (this.game.ui) {
+            this.game.ui.showBlackMarketShop(this);
+        } else {
+            // Fallback to original behavior
+            if (this.game.powerUpManager) {
+                const powerUpType = this.powerUpTypes[Math.floor(Math.random() * this.powerUpTypes.length)];
+                this.game.powerUpManager.givePlayerPowerUp(powerUpType);
                 
-            if (this.game.audioManager) {
-                this.game.audioManager.playSound('powerup_pickup', this.x, this.y);
+                this.cooldownTimer = this.cooldownDuration;
+                
+                this.game.addTextEffect(this.x + this.width/2, this.y + this.height + 10, 
+                    `Power-up acquired!`, '#800080', 2000);
+                    
+                if (this.game.audioManager) {
+                    this.game.audioManager.playSound('powerup_pickup', this.x, this.y);
+                }
             }
         }
     }
