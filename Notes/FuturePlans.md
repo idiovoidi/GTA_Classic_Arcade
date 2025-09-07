@@ -4,7 +4,12 @@ Procedural districts with random encounter squads
 
 Main hub hideout with upgradeable facilities 
 
+Enterable buildings with a transparent roof transition for indoors gameplay
 
+Wanted level progression to military troops and tanks for added challenge
+
+
+Destructible building walls with invincible support beams to keep structure 
 
 ----
 #### Implemented 
