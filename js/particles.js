@@ -54,6 +54,9 @@ class Particle {
         if (colorStr.includes('#ff0000')) return 'blood';
         if (colorStr.includes('#ffff00') || colorStr.includes('#ffffff')) return 'spark';
         if (colorStr.includes('#00ff00')) return 'energy';
+        if (colorStr.includes('#888') || colorStr.includes('#aaa')) return 'concrete';
+        if (colorStr.includes('#bbb') || colorStr.includes('#ccc')) return 'dust';
+        if (colorStr.includes('#777')) return 'debris';
         return 'generic';
     }
     
@@ -81,6 +84,19 @@ class Particle {
                     this.gravity = 0;
                     this.friction = 0.95;
                     this.rotationSpeed = 0.2;
+                    break;
+                case 'concrete':
+                    this.gravity = 0.1;
+                    this.friction = 0.95;
+                    break;
+                case 'dust':
+                    this.gravity = -0.02; // Dust rises slightly
+                    this.friction = 0.98;
+                    this.scaleRate = 0.03; // Dust expands over time
+                    break;
+                case 'debris':
+                    this.gravity = 0.05;
+                    this.friction = 0.93;
                     break;
                 default:
                     // Keep default values for generic particles
@@ -165,6 +181,15 @@ class Particle {
                 break;
             case 'energy':
                 this.renderEnergyParticle(ctx);
+                break;
+            case 'concrete':
+                this.renderGenericParticle(ctx);
+                break;
+            case 'dust':
+                this.renderDustParticle(ctx);
+                break;
+            case 'debris':
+                this.renderGenericParticle(ctx);
                 break;
             default:
                 this.renderGenericParticle(ctx);
@@ -457,5 +482,132 @@ class SparkParticle extends Particle {
         super.reset(x, y, color, life, size, angle, speed);
         this.particleType = 'spark';
         this.setupParticleType();
+    }
+}
+
+/**
+ * Concrete particle for wall debris
+ */
+class ConcreteParticle extends Particle {
+    constructor(game, x, y) {
+        const colors = ['#888888', '#999999', '#AAAAAA'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 30 + Math.random() * 90;
+        const size = 2 + Math.random() * 6;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 3;
+        
+        super(game, x, y, color, life, size, angle, speed);
+        this.particleType = 'concrete';
+        this.gravity = 0.1;
+        this.friction = 0.95;
+    }
+    
+    /**
+     * Reset concrete particle for object pooling
+     */
+    reset(x, y) {
+        const colors = ['#888888', '#999999', '#AAAAAA'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 30 + Math.random() * 90;
+        const size = 2 + Math.random() * 6;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 3;
+        
+        super.reset(x, y, color, life, size, angle, speed);
+        this.particleType = 'concrete';
+        this.gravity = 0.1;
+        this.friction = 0.95;
+    }
+}
+
+/**
+ * Dust particle for damage effects
+ */
+class DustParticle extends Particle {
+    constructor(game, x, y) {
+        const colors = ['#AAAAAA', '#BBBBBB', '#CCCCCC'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 60 + Math.random() * 120;
+        const size = 3 + Math.random() * 8;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.5 + Math.random() * 1;
+        
+        super(game, x, y, color, life, size, angle, speed);
+        this.particleType = 'dust';
+        this.gravity = -0.02; // Dust rises slightly
+        this.friction = 0.98;
+        this.scaleRate = 0.03; // Dust expands over time
+    }
+    
+    /**
+     * Reset dust particle for object pooling
+     */
+    reset(x, y) {
+        const colors = ['#AAAAAA', '#BBBBBB', '#CCCCCC'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 60 + Math.random() * 120;
+        const size = 3 + Math.random() * 8;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.5 + Math.random() * 1;
+        
+        super.reset(x, y, color, life, size, angle, speed);
+        this.particleType = 'dust';
+        this.gravity = -0.02; // Dust rises slightly
+        this.friction = 0.98;
+        this.scaleRate = 0.03; // Dust expands over time
+    }
+    
+    updateSpecialEffects(deltaTime) {
+        // Dust becomes more transparent over time
+        this.alpha *= 0.99;
+    }
+    
+    renderDustParticle(ctx) {
+        // Soft dust particle
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+/**
+ * Debris particle for large chunks
+ */
+class DebrisParticle extends Particle {
+    constructor(game, x, y) {
+        const colors = ['#777777', '#888888', '#999999'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 80 + Math.random() * 150;
+        const size = 4 + Math.random() * 10;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.5 + Math.random() * 2;
+        
+        super(game, x, y, color, life, size, angle, speed);
+        this.particleType = 'debris';
+        this.gravity = 0.05;
+        this.friction = 0.93;
+    }
+    
+    /**
+     * Reset debris particle for object pooling
+     */
+    reset(x, y) {
+        const colors = ['#777777', '#888888', '#999999'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const life = 80 + Math.random() * 150;
+        const size = 4 + Math.random() * 10;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.5 + Math.random() * 2;
+        
+        super.reset(x, y, color, life, size, angle, speed);
+        this.particleType = 'debris';
+        this.gravity = 0.05;
+        this.friction = 0.93;
     }
 }

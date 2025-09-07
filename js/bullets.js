@@ -117,7 +117,8 @@ class Bullet {
         // Check if this object type should be hit by bullets
         return (obj.constructor.name === 'Pedestrian' && obj.state !== 'dead') ||
                (obj.constructor.name === 'Vehicle' && obj.state !== 'dead') ||
-               (obj.constructor.name === 'Police' && obj.health > 0);
+               (obj.constructor.name === 'Police' && obj.health > 0) ||
+               (obj.constructor.name === 'Tank' && obj.health > 0);
     }
     
     checkCollisionsBruteForce() {
@@ -144,6 +145,15 @@ class Bullet {
             const cop = this.game.police[i];
             if (cop.health > 0 && this.game.checkCollision(this, cop)) {
                 this.hit(cop);
+                return;
+            }
+        }
+        
+        // Check collision with tanks
+        for (let i = 0; i < this.game.tanks.length; i++) {
+            const tank = this.game.tanks[i];
+            if (tank.health > 0 && this.game.checkCollision(this, tank)) {
+                this.hit(tank);
                 return;
             }
         }
@@ -177,7 +187,8 @@ class Bullet {
             if (target !== this.game.player) {
                 this.game.score += target.constructor.name === 'Pedestrian' ? 10 : 
                                  target.constructor.name === 'Vehicle' ? 50 : 
-                                 target.constructor.name === 'Police' ? 100 : 0;
+                                 target.constructor.name === 'Police' ? 100 : 
+                                 target.constructor.name === 'Tank' ? 500 : 0;
             }
         } else {
             // Record miss in progression system (only for player bullets)
@@ -269,7 +280,8 @@ class Bullet {
         const entities = [
             ...this.game.pedestrians,
             ...this.game.vehicles,
-            ...this.game.police
+            ...this.game.police,
+            ...this.game.tanks
         ];
         
         // Add player to entities if not the shooter

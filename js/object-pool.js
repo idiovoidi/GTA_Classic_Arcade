@@ -170,7 +170,7 @@ class ParticlePool extends ObjectPool {
             // Create function
             () => new Particle(game, 0, 0, '#000000', 100, 1),
             // Reset function
-            (particle, x, y, color, life, size, angle, speed) => {
+            (particle, x, y, color, life, size, angle, speed, particleType) => {
                 particle.x = x || 0;
                 particle.y = y || 0;
                 particle.color = color || '#ffffff';
@@ -193,7 +193,7 @@ class ParticlePool extends ObjectPool {
                 particle.scaleRate = Math.random() * 0.02 + 0.01;
                 
                 // Setup particle type
-                particle.particleType = particle.determineParticleType(color);
+                particle.particleType = particleType || particle.determineParticleType(color);
                 particle.setupParticleType();
             },
             200 // Initial pool size for particles
@@ -211,10 +211,39 @@ class ParticlePool extends ObjectPool {
      * @param {number} size - Particle size
      * @param {number} angle - Movement angle
      * @param {number} speed - Movement speed
+     * @param {string} particleType - Type of particle
      * @returns {Particle} Pooled particle
      */
-    createParticle(x, y, color, life, size, angle, speed) {
-        return this.get(x, y, color, life, size, angle, speed);
+    createParticle(x, y, color, life, size, angle, speed, particleType) {
+        return this.get(x, y, color, life, size, angle, speed, particleType);
+    }
+    
+    /**
+     * Create a specialized particle from the pool
+     * @param {string} type - Type of specialized particle
+     * @param {number} x - X position
+     * @param {number} y - Y position
+     * @returns {Particle} Pooled specialized particle
+     */
+    createSpecializedParticle(type, x, y) {
+        switch (type) {
+            case 'spark':
+                return new SparkParticle(this.game, x, y);
+            case 'smoke':
+                return new SmokeParticle(this.game, x, y);
+            case 'explosion':
+                return new ExplosionParticle(this.game, x, y);
+            case 'blood':
+                return new BloodParticle(this.game, x, y);
+            case 'concrete':
+                return new ConcreteParticle(this.game, x, y);
+            case 'dust':
+                return new DustParticle(this.game, x, y);
+            case 'debris':
+                return new DebrisParticle(this.game, x, y);
+            default:
+                return this.createParticle(x, y, '#ffffff', 60, 2, 0, 1);
+        }
     }
     
     /**
@@ -285,9 +314,15 @@ class PoolManager {
     /**
      * Create a particle using object pooling
      */
-    createParticle(x, y, color, life, size, angle, speed) {
+    createParticle(x, y, color, life, size, angle, speed, particleType) {
+        // Check if we should limit particle creation
+        if (this.game && this.game.shouldLimitParticles && this.game.shouldLimitParticles()) {
+            // Skip particle creation to maintain performance
+            return null;
+        }
+        
         try {
-            return this.particlePool.createParticle(x, y, color, life, size, angle, speed);
+            return this.particlePool.createParticle(x, y, color, life, size, angle, speed, particleType);
         } catch (error) {
             console.warn('Failed to create particle:', error);
             return null;
@@ -295,10 +330,29 @@ class PoolManager {
     }
     
     /**
+     * Create a specialized particle using object pooling
+     */
+    createSpecializedParticle(type, x, y) {
+        // Check if we should limit particle creation
+        if (this.game && this.game.shouldLimitParticles && this.game.shouldLimitParticles()) {
+            // Skip particle creation to maintain performance
+            return null;
+        }
+        
+        try {
+            return this.particlePool.createSpecializedParticle(type, x, y);
+        } catch (error) {
+            console.warn('Failed to create specialized particle:', error);
+            // Fallback to generic particle
+            return this.createParticle(x, y, '#ffffff', 60, 2, 0, 1);
+        }
+    }
+    
+    /**
      * Get a particle using object pooling (alias for createParticle)
      */
-    getParticle(x, y, color, life, size, angle, speed) {
-        return this.createParticle(x, y, color, life, size, angle, speed);
+    getParticle(x, y, color, life, size, angle, speed, particleType) {
+        return this.createParticle(x, y, color, life, size, angle, speed, particleType);
     }
     
     /**

@@ -447,6 +447,26 @@ class AudioManager {
                 duration = 0.6;
                 generator = this.generateVehicleSpawn.bind(this);
                 break;
+            case 'tank_cannon':
+                duration = 0.3;
+                generator = this.generateTankCannon.bind(this);
+                break;
+            case 'tank_machinegun':
+                duration = 0.1;
+                generator = this.generateTankMachineGun.bind(this);
+                break;
+            case 'tank_spawn':
+                duration = 0.8;
+                generator = this.generateTankSpawn.bind(this);
+                break;
+            case 'tank_explosion':
+                duration = 1.5;
+                generator = this.generateTankExplosion.bind(this);
+                break;
+            case 'tank_damage':
+                duration = 0.4;
+                generator = this.generateTankDamage.bind(this);
+                break;
             case 'traffic_light':
                 duration = 0.2;
                 generator = this.generateTrafficLight.bind(this);
@@ -768,6 +788,66 @@ class AudioManager {
             const chirp1 = Math.sin(2 * Math.PI * baseFreq * t * (1 + Math.sin(t * 20))) * 0.4;
             const chirp2 = Math.sin(2 * Math.PI * baseFreq * 1.5 * t * (1 + Math.sin(t * 15))) * 0.3;
             data[i] = (chirp1 + chirp2) * envelope;
+        }
+    }
+    
+    generateTankCannon(data, sampleRate, pitch) {
+        const baseFreq = 60 * pitch;
+        for (let i = 0; i < data.length; i++) {
+            const t = i / sampleRate;
+            const envelope = Math.exp(-t * 8);
+            const boom = Math.sin(2 * Math.PI * baseFreq * t) * 0.9;
+            const rumble = Math.sin(2 * Math.PI * baseFreq * 0.5 * t) * 0.6;
+            const crack = (Math.random() * 2 - 1) * 0.7 * Math.exp(-t * 15);
+            data[i] = (boom + rumble + crack) * envelope;
+        }
+    }
+    
+    generateTankMachineGun(data, sampleRate, pitch) {
+        const baseFreq = 200 * pitch;
+        for (let i = 0; i < data.length; i++) {
+            const t = i / sampleRate;
+            const envelope = Math.exp(-t * 20);
+            const noise = (Math.random() * 2 - 1) * 0.8;
+            const rapidFire = Math.sin(2 * Math.PI * baseFreq * t) * 0.4;
+            data[i] = (noise + rapidFire) * envelope;
+        }
+    }
+    
+    generateTankSpawn(data, sampleRate, pitch) {
+        const baseFreq = 80 * pitch;
+        for (let i = 0; i < data.length; i++) {
+            const t = i / sampleRate;
+            const envelope = Math.exp(-t * 3);
+            const engine = Math.sin(2 * Math.PI * baseFreq * t) * 0.6;
+            const mechanical = Math.sin(2 * Math.PI * baseFreq * 3 * t) * 0.4;
+            const startup = Math.sin(2 * Math.PI * baseFreq * 0.5 * t) * 0.3 * Math.exp(-t * 6);
+            data[i] = (engine + mechanical + startup) * envelope;
+        }
+    }
+    
+    generateTankExplosion(data, sampleRate, pitch) {
+        const baseFreq = 50 * pitch;
+        for (let i = 0; i < data.length; i++) {
+            const t = i / sampleRate;
+            const envelope = Math.exp(-t * 1.5);
+            const massiveBoom = Math.sin(2 * Math.PI * baseFreq * t) * 0.9;
+            const metalTwist = Math.sin(2 * Math.PI * 300 * t) * 0.5 * Math.exp(-t * 3);
+            const debris = (Math.random() * 2 - 1) * 0.7 * Math.exp(-t * 2);
+            const echo = Math.sin(2 * Math.PI * baseFreq * 0.6 * t) * 0.4;
+            data[i] = (massiveBoom + metalTwist + debris + echo) * envelope;
+        }
+    }
+    
+    generateTankDamage(data, sampleRate, pitch) {
+        const baseFreq = 250 * pitch;
+        for (let i = 0; i < data.length; i++) {
+            const t = i / sampleRate;
+            const envelope = Math.exp(-t * 6);
+            const clang = Math.sin(2 * Math.PI * baseFreq * t) * 0.6;
+            const metallic = Math.sin(2 * Math.PI * baseFreq * 2.5 * t) * 0.4;
+            const crack = (Math.random() * 2 - 1) * 0.3 * Math.exp(-t * 10);
+            data[i] = (clang + metallic + crack) * envelope;
         }
     }
 

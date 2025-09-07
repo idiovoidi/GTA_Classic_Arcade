@@ -51,6 +51,19 @@ const VEHICLE_TYPES = {
         turnSpeed: 0.06,
         colors: ['#000000', '#ff0000', '#0000ff', '#ffd700', '#800080'],
         spawnWeight: 15
+    },
+    TANK: {
+        name: 'Tank',
+        width: 60, // Length of the tank (front to back)
+        height: 30, // Width of the tank (side to side)
+        radius: 25,
+        health: 300, // Much higher than regular vehicles
+        mass: 8.0, // Very heavy
+        maxSpeed: 0.8, // Slow but powerful
+        acceleration: 0.03,
+        turnSpeed: 0.01, // Turns very slowly
+        colors: ['#4a4a4a', '#333333', '#555555'], // Military colors
+        spawnWeight: 0 // Never spawns randomly, only at wanted level 6
     }
 };
 

@@ -66,23 +66,82 @@ class City {
     }
     
     generateBuildings() {
-        const buildingTypes = [
-            { width: 80, height: 60, color: '#666' },
-            { width: 100, height: 80, color: '#555' },
-            { width: 60, height: 100, color: '#777' },
-            { width: 120, height: 70, color: '#444' }
-        ];
-        
+        // Define building templates for different types
+        const buildingTemplates = {
+            residential: {
+                sizes: [
+                    { width: 60, height: 40 },
+                    { width: 70, height: 50 },
+                    { width: 80, height: 60 }
+                ],
+                colors: ['#666666', '#777777', '#888888'],
+                features: ['windows', 'doors', 'balconies'],
+                windowPatterns: ['grid', 'vertical', 'horizontal']
+            },
+            commercial: {
+                sizes: [
+                    { width: 80, height: 60 },
+                    { width: 100, height: 80 },
+                    { width: 120, height: 100 }
+                ],
+                colors: ['#7FB3D3', '#A3C1DA', '#B8D0E0'],
+                features: ['largeWindows', 'signs', 'entrances'],
+                windowPatterns: ['glass', 'reflective', 'tinted']
+            },
+            industrial: {
+                sizes: [
+                    { width: 100, height: 80 },
+                    { width: 120, height: 100 },
+                    { width: 140, height: 120 }
+                ],
+                colors: ['#444444', '#555555', '#666666'],
+                features: ['pipes', 'tanks', 'catwalks'],
+                windowPatterns: ['sparse', 'utilitarian']
+            },
+            skyscraper: {
+                sizes: [
+                    { width: 60, height: 120 },
+                    { width: 70, height: 160 },
+                    { width: 80, height: 200 }
+                ],
+                colors: ['#222222', '#333333', '#444444'],
+                features: ['gridPattern', 'antenna', 'ledges'],
+                windowPatterns: ['grid', 'curtainWall']
+            }
+        };
+
+        // Building type selection algorithm
+        const buildingTypes = ['residential', 'commercial', 'industrial', 'skyscraper'];
+        const typeWeights = [0.4, 0.3, 0.2, 0.1]; // Residential most common, skyscraper least common
+
         for (let i = 0; i < 50; i++) {
-            const type = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
-            const x = Math.random() * (this.width - type.width);
-            const y = Math.random() * (this.height - type.height);
+            // Select building type based on weights
+            let random = Math.random();
+            let typeIndex = 0;
+            let cumulativeWeight = 0;
+            
+            for (let j = 0; j < typeWeights.length; j++) {
+                cumulativeWeight += typeWeights[j];
+                if (random <= cumulativeWeight) {
+                    typeIndex = j;
+                    break;
+                }
+            }
+            
+            const buildingType = buildingTypes[typeIndex];
+            const template = buildingTemplates[buildingType];
+            
+            // Select random size from template
+            const size = template.sizes[Math.floor(Math.random() * template.sizes.length)];
+            
+            const x = Math.random() * (this.width - size.width);
+            const y = Math.random() * (this.height - size.height);
             
             // Check if building overlaps with roads
             let overlaps = false;
             for (const road of this.roads) {
                 if (this.rectOverlap(
-                    x, y, type.width, type.height,
+                    x, y, size.width, size.height,
                     road.x, road.y, road.width, road.height
                 )) {
                     overlaps = true;
@@ -91,8 +150,12 @@ class City {
             }
             
             if (!overlaps) {
-                // Create new Building instance instead of simple object
-                this.buildings.push(new Building(this.game, x, y, type.width, type.height));
+                // Create new Building instance with type information
+                const building = new Building(this.game, x, y, size.width, size.height);
+                building.buildingType = buildingType;
+                building.colorScheme = template.colors;
+                building.windowPattern = template.windowPatterns[Math.floor(Math.random() * template.windowPatterns.length)];
+                this.buildings.push(building);
             }
         }
     }

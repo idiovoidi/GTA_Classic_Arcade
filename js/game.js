@@ -29,6 +29,13 @@ class Game {
         this.fps = 60;
         this.targetFrameTime = 1000 / this.fps;
         
+        // Quality settings
+        this.qualitySettings = {
+            particleQuality: 'high', // 'low', 'medium', 'high'
+            maxParticles: 300, // Maximum particles allowed
+            particleDistanceCulling: true
+        };
+        
         // Camera
         this.camera = {
             x: 0,
@@ -45,6 +52,7 @@ class Game {
         this.city = null;
         this.pedestrians = [];
         this.police = [];
+        this.tanks = [];
         this.vehicles = [];
         this.bullets = [];
         this.particles = [];
@@ -137,6 +145,7 @@ class Game {
                 killPedestrian: 15,
                 killPolice: 50,
                 destroyVehicle: 25,
+                destroyTank: 75,
                 shooting: 5,
                 collision: 3,
                 speeding: 1
@@ -151,7 +160,20 @@ class Game {
             clicked: false
         };
         
+        // Performance monitoring
+        this.performanceMonitor = {
+            lastFPSUpdate: 0,
+            frameCount: 0,
+            currentFPS: 60,
+            particleCount: 0,
+            lastParticleAdjustment: 0,
+            autoAdjustQuality: true
+        };
+        
         this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
     }
     
     setupEventListeners() {
@@ -424,6 +446,34 @@ class Game {
                 });
             }, 'police') || [];
             
+            // Update tanks with safe array operations
+            this.tanks = window.ErrorWrappers?.safeArrayOperation(this.tanks, (tanks) => {
+                return tanks.filter((tank, index) => {
+                    try {
+                        window.ErrorWrappers?.safeAIUpdate(tank, deltaTime, 'tank');
+                        if (tank.health <= 0) {
+                            this.score += 500;
+                            this.addHeat(this.wantedSystem.crimeHeat.destroyVehicle, 'tank_destruction');
+                            
+                            // Record kill in progression system
+                            if (this.progression) {
+                                this.progression.recordKill('tank');
+                            }
+                            
+                            return false; // Remove from array
+                        }
+                        return true; // Keep in array
+                    } catch (error) {
+                        window.errorHandler?.handleGameError('tank_update_error', {
+                            message: error.message,
+                            index: index,
+                            tank: tank ? { x: tank.x, y: tank.y, health: tank.health } : null
+                        });
+                        return false; // Remove problematic tank
+                    }
+                });
+            }, 'tank') || [];
+            
             // Update bullets with object pooling
             if (this.poolManager) {
                 const poolResults = this.poolManager.update(deltaTime);
@@ -632,6 +682,9 @@ class Game {
             
             // Memory management and cleanup
             this.performMemoryManagement(deltaTime);
+            
+            // Update performance monitoring
+            this.updatePerformanceMonitoring(deltaTime);
         } catch (error) {
             window.errorHandler?.handleGameError('game_update_error', {
                 message: error.message,
@@ -640,6 +693,63 @@ class Game {
                 critical: true
             });
         }
+    }
+    
+    /**
+     * Update performance monitoring and adjust settings if needed
+     * @param {number} deltaTime - Delta time
+     */
+    updatePerformanceMonitoring(deltaTime) {
+        this.performanceMonitor.frameCount++;
+        this.performanceMonitor.lastFPSUpdate += deltaTime;
+        
+        // Update FPS calculation every second
+        if (this.performanceMonitor.lastFPSUpdate >= 1000) {
+            this.performanceMonitor.currentFPS = this.performanceMonitor.frameCount;
+            this.performanceMonitor.frameCount = 0;
+            this.performanceMonitor.lastFPSUpdate = 0;
+            
+            // Update particle count
+            this.performanceMonitor.particleCount = this.particles ? this.particles.length : 0;
+            
+            // Auto-adjust quality settings if enabled
+            if (this.performanceMonitor.autoAdjustQuality) {
+                this.adjustQualitySettings();
+            }
+        }
+    }
+    
+    /**
+     * Adjust quality settings based on performance
+     */
+    adjustQualitySettings() {
+        const currentFPS = this.performanceMonitor.currentFPS;
+        const targetFPS = 50; // Target FPS for good performance
+        
+        // Adjust particle quality based on FPS
+        if (currentFPS < targetFPS * 0.7) { // Very poor performance
+            this.qualitySettings.particleQuality = 'low';
+            this.qualitySettings.maxParticles = 150;
+        } else if (currentFPS < targetFPS * 0.9) { // Poor performance
+            this.qualitySettings.particleQuality = 'medium';
+            this.qualitySettings.maxParticles = 200;
+        } else { // Good performance
+            this.qualitySettings.particleQuality = 'high';
+            this.qualitySettings.maxParticles = 300;
+        }
+    }
+    
+    /**
+     * Get performance statistics
+     * @returns {Object} Performance stats
+     */
+    getPerformanceStats() {
+        return {
+            fps: this.performanceMonitor.currentFPS,
+            particleCount: this.performanceMonitor.particleCount,
+            qualitySettings: this.qualitySettings,
+            memoryUsage: this.getMemoryStats()
+        };
     }
     
     updateSpatialGrid() {
@@ -651,6 +761,7 @@ class Game {
             ...this.pedestrians,
             ...this.vehicles,
             ...this.police,
+            ...this.tanks,
             ...this.bullets,
             ...(this.powerUpManager ? this.powerUpManager.powerUps : [])
         ].filter(obj => obj && obj.health > 0 && obj.active !== false);
@@ -673,7 +784,7 @@ class Game {
         
         nearbyObjects.forEach(obj => {
             if (obj.health > 0 && this.checkCollision(this.player, obj)) {
-                if (obj.constructor.name === 'Vehicle' || obj.constructor.name === 'Police') {
+                if (obj.constructor.name === 'Vehicle' || obj.constructor.name === 'Police' || obj.constructor.name === 'Tank') {
                     this.handleVehicleCollision(this.player, obj);
                 }
             }
@@ -686,7 +797,7 @@ class Game {
             const nearby = this.spatialGrid.getNearbyObjects(vehicle);
             nearby.forEach(other => {
                 if (other !== vehicle && 
-                    (other.constructor.name === 'Vehicle' || other.constructor.name === 'Police') &&
+                    (other.constructor.name === 'Vehicle' || other.constructor.name === 'Police' || other.constructor.name === 'Tank') &&
                     other.health > 0 && 
                     this.checkCollision(vehicle, other)) {
                     this.handleVehicleCollision(vehicle, other);
@@ -710,6 +821,13 @@ class Game {
             }
         });
         
+        // Player vs tanks
+        this.tanks.forEach(tank => {
+            if (tank.health > 0 && this.checkCollision(this.player, tank)) {
+                this.handleVehicleCollision(this.player, tank);
+            }
+        });
+        
         // Vehicle vs vehicle collisions
         for (let i = 0; i < this.vehicles.length; i++) {
             for (let j = i + 1; j < this.vehicles.length; j++) {
@@ -729,6 +847,14 @@ class Game {
                 if (vehicle.health > 0 && cop.health > 0 && 
                     this.checkCollision(vehicle, cop)) {
                     this.handleVehicleCollision(vehicle, cop);
+                }
+            });
+            
+            // Vehicle vs tank collisions
+            this.tanks.forEach(tank => {
+                if (vehicle.health > 0 && tank.health > 0 && 
+                    this.checkCollision(vehicle, tank)) {
+                    this.handleVehicleCollision(vehicle, tank);
                 }
             });
         });
@@ -883,6 +1009,47 @@ class Game {
         if (distance < 400) return 'medium';
         if (distance < 600) return 'low';
         return 'skip';
+    }
+    
+    /**
+     * Check if particle should be rendered based on distance and LOD settings
+     * @param {Particle} particle - Particle to check
+     * @returns {boolean} Whether particle should be rendered
+     */
+    shouldRenderParticle(particle) {
+        // Always render close particles
+        const distance = this.getDistanceFromCamera(particle);
+        
+        // Apply quality settings
+        switch (this.qualitySettings.particleQuality) {
+            case 'low':
+                // Reduce particle count significantly
+                if (distance > 200) return Math.random() < 0.3;
+                if (distance > 400) return Math.random() < 0.1;
+                break;
+            case 'medium':
+                // Reduce particle count moderately
+                if (distance > 300) return Math.random() < 0.5;
+                if (distance > 500) return Math.random() < 0.2;
+                break;
+            case 'high':
+            default:
+                // Full particle effects
+                if (distance < 200) return true;
+                if (distance < 400) return Math.random() < 0.7;
+                if (distance < 600) return Math.random() < 0.4;
+                return Math.random() < 0.2;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Check if we've exceeded maximum particles
+     * @returns {boolean} Whether we should limit particle creation
+     */
+    shouldLimitParticles() {
+        return this.particles && this.particles.length >= this.qualitySettings.maxParticles;
     }
     
     performMemoryManagement(deltaTime) {
@@ -1289,6 +1456,11 @@ class Game {
                 cop.alertLevel = Math.min(100, cop.alertLevel + (currentLevel * 5));
             }
         });
+        
+        // Spawn tanks when wanted level reaches 6
+        if (currentLevel === 6) {
+            this.updateTankSpawning(deltaTime);
+        }
     }
     
     spawnPoliceWithResponse(response) {
@@ -1368,6 +1540,49 @@ class Game {
             const y = this.player.y + Math.sin(angle) * distance;
             this.police.push(new Police(this, x, y));
         }
+    }
+    
+    updateTankSpawning(deltaTime) {
+        // Limit to 2-3 tanks maximum on screen at once
+        if (this.tanks.length >= 3) return;
+        
+        // Spawn tanks using the 'roadblock' method to create ambush scenarios
+        if (Math.random() < 0.005) { // Low spawn chance
+            this.spawnTank();
+        }
+        
+        // Update existing tanks
+        this.tanks = this.tanks.filter(tank => {
+            if (tank.health <= 0) {
+                this.score += 500; // Higher score for destroying tanks
+                this.addHeat(this.wantedSystem.crimeHeat.destroyVehicle, 'tank_destruction');
+                return false; // Remove destroyed tanks
+            }
+            return true; // Keep active tanks
+        });
+    }
+    
+    spawnTank() {
+        // Spawn ahead of player on roads for ambush
+        const playerDirection = Math.atan2(this.player.velocity.y, this.player.velocity.x);
+        const roadblockDistance = 300; // Further than police roadblocks
+        const spawnX = this.player.x + Math.cos(playerDirection) * roadblockDistance;
+        const spawnY = this.player.y + Math.sin(playerDirection) * roadblockDistance;
+        
+        // Ensure spawn position is within bounds
+        const boundedX = Math.max(0, Math.min(this.city.width, spawnX));
+        const boundedY = Math.max(0, Math.min(this.city.height, spawnY));
+        
+        // Create tank
+        const tank = new Tank(this, boundedX, boundedY);
+        this.tanks.push(tank);
+        
+        // Play tank spawn sound
+        if (this.audioManager) {
+            this.audioManager.playSound('tank_spawn', boundedX, boundedY);
+        }
+        
+        console.log(`Tank spawned at wanted level ${this.wantedSystem.level}`);
     }
     
     addHeat(amount, crimeType) {
@@ -1511,6 +1726,18 @@ class Game {
                 }
             });
             
+            // Render tanks - with culling and LOD
+            this.tanks.forEach((tank, index) => {
+                if (this.isInViewport(tank)) {
+                    const lodLevel = this.getLODLevel(tank);
+                    if (lodLevel !== 'skip') {
+                        window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
+                            tank.render(ctx, lodLevel);
+                        }, `tank_${index}`);
+                    }
+                }
+            });
+            
             // Render corpses (ground layer after entities)
             this.renderCorpses();
             
@@ -1530,14 +1757,8 @@ class Game {
                 }
             });
             
-            // Render particles - with culling
-            this.particles.forEach((particle, index) => {
-                if (this.isInViewport(particle)) {
-                    window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
-                        particle.render(ctx);
-                    }, `particle_${index}`);
-                }
-            });
+            // Render particles with batching optimization
+            this.renderParticlesWithBatching();
             
             // Render power-ups - with culling
             if (this.powerUpManager) {
@@ -1594,6 +1815,47 @@ class Game {
                     this.width / 2, this.height / 2);
             } catch (renderError) {
                 console.error('Failed to render error screen:', renderError);
+            }
+        }
+    }
+    
+    /**
+     * Render particles with batching optimization
+     */
+    renderParticlesWithBatching() {
+        // Group particles by type for more efficient rendering
+        const particleGroups = {};
+        
+        this.particles.forEach(particle => {
+            if (this.isInViewport(particle) && this.shouldRenderParticle(particle)) {
+                const type = particle.particleType || 'generic';
+                if (!particleGroups[type]) {
+                    particleGroups[type] = [];
+                }
+                particleGroups[type].push(particle);
+            }
+        });
+        
+        // Render each group
+        for (const [type, particles] of Object.entries(particleGroups)) {
+            // For simple particles, we can optimize by setting context properties once
+            if (type === 'generic' || type === 'spark') {
+                this.ctx.save();
+                // Set common properties once for the group
+                // Then render all particles in the group
+                particles.forEach((particle, index) => {
+                    window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
+                        particle.render(ctx);
+                    }, `particle_${type}_${index}`);
+                });
+                this.ctx.restore();
+            } else {
+                // For complex particles, render individually
+                particles.forEach((particle, index) => {
+                    window.ErrorWrappers?.safeRenderOperation(this.ctx, (ctx) => {
+                        particle.render(ctx);
+                    }, `particle_${type}_${index}`);
+                });
             }
         }
     }
@@ -1763,3 +2025,6 @@ class Game {
         this.textEffects.push(textEffect);
     }
 }
+
+// Export the Game class for use in other modules
+window.Game = Game;
