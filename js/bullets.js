@@ -71,12 +71,6 @@ class Bullet {
         
         // Check collisions with entities
         this.checkCollisions();
-        
-        // Reduce life
-        this.life -= deltaTime;
-        if (this.life <= 0) {
-            this.active = false;
-        }
     }
     
     checkCollisions() {
@@ -95,12 +89,26 @@ class Bullet {
             this.checkCollisionsBruteForce();
         }
         
-        // Check collision with buildings (static objects)
-        for (const building of this.game.city.buildings) {
-            if (this.x >= building.x && this.x <= building.x + building.width &&
-                this.y >= building.y && this.y <= building.y + building.height) {
-                this.hit();
-                return;
+        // Check collision with buildings (new building system)
+        if (this.game.city && this.game.city.buildings) {
+            for (const building of this.game.city.buildings) {
+                // Check collision with building walls
+                for (const wall of building.walls) {
+                    if (!wall.isDestroyed && Physics.checkPointInRect(this.x, this.y, wall)) {
+                        this.hit(building);
+                        building.takeDamage(this.damage, {x: this.x, y: this.y});
+                        return;
+                    }
+                }
+                
+                // Check collision with support beams
+                for (const beam of building.beams) {
+                    if (Physics.checkPointInRect(this.x, this.y, beam)) {
+                        this.hit(building);
+                        building.takeDamage(this.damage, {x: this.x, y: this.y});
+                        return;
+                    }
+                }
             }
         }
     }

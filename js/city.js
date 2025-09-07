@@ -91,14 +91,8 @@ class City {
             }
             
             if (!overlaps) {
-                this.buildings.push({
-                    x: x,
-                    y: y,
-                    width: type.width,
-                    height: type.height,
-                    color: type.color,
-                    windows: this.generateWindows(type.width, type.height)
-                });
+                // Create new Building instance instead of simple object
+                this.buildings.push(new Building(this.game, x, y, type.width, type.height));
             }
         }
     }
@@ -174,6 +168,11 @@ class City {
                 decoration.flicker = Math.random() < 0.1;
             }
         });
+        
+        // Update buildings
+        this.buildings.forEach(building => {
+            building.update(deltaTime);
+        });
     }
     
     render(ctx) {
@@ -213,26 +212,9 @@ class City {
             ctx.restore();
         });
         
-        // Render buildings
+        // Render buildings using the new Building system
         this.buildings.forEach(building => {
-            ctx.fillStyle = building.color;
-            ctx.fillRect(building.x, building.y, building.width, building.height);
-            
-            // Building outline
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(building.x, building.y, building.width, building.height);
-            
-            // Windows
-            building.windows.forEach(window => {
-                ctx.fillStyle = window.lit ? '#FFD700' : '#666';
-                ctx.fillRect(
-                    building.x + window.x,
-                    building.y + window.y,
-                    window.width,
-                    window.height
-                );
-            });
+            building.render(ctx);
         });
         
         // Render decorations
