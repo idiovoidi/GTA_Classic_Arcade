@@ -118,7 +118,8 @@ class Bullet {
         return (obj.constructor.name === 'Pedestrian' && obj.state !== 'dead') ||
                (obj.constructor.name === 'Vehicle' && obj.state !== 'dead') ||
                (obj.constructor.name === 'Police' && obj.health > 0) ||
-               (obj.constructor.name === 'Tank' && obj.health > 0);
+               (obj.constructor.name === 'Tank' && obj.health > 0) ||
+               (obj.constructor.name === 'SoldierTroop' && obj.health > 0);
     }
     
     checkCollisionsBruteForce() {
@@ -157,6 +158,17 @@ class Bullet {
                 return;
             }
         }
+        
+        // Check collision with soldiers
+        if (this.game.soldiers) {
+            for (let i = 0; i < this.game.soldiers.length; i++) {
+                const soldier = this.game.soldiers[i];
+                if (soldier.health > 0 && this.game.checkCollision(this, soldier)) {
+                    this.hit(soldier);
+                    return;
+                }
+            }
+        }
     }
     
     hit(target = null) {
@@ -188,7 +200,8 @@ class Bullet {
                 this.game.score += target.constructor.name === 'Pedestrian' ? 10 : 
                                  target.constructor.name === 'Vehicle' ? 50 : 
                                  target.constructor.name === 'Police' ? 100 : 
-                                 target.constructor.name === 'Tank' ? 500 : 0;
+                                 target.constructor.name === 'Tank' ? 500 : 
+                                 target.constructor.name === 'SoldierTroop' ? 200 : 0;
             }
         } else {
             // Record miss in progression system (only for player bullets)
@@ -281,7 +294,8 @@ class Bullet {
             ...this.game.pedestrians,
             ...this.game.vehicles,
             ...this.game.police,
-            ...this.game.tanks
+            ...this.game.tanks,
+            ...(this.game.soldiers || [])
         ];
         
         // Add player to entities if not the shooter
