@@ -125,8 +125,6 @@ this.city = new City(this, {
     // Visual details
     sidewalkWidth: 8,         // Width of sidewalks on roads
     
-    // Special features
-    addBoulevards: true,      // Add wide main streets
     
     // Density control
     density: 1.0              // Building density multiplier (0.5 = half, 2.0 = double)
