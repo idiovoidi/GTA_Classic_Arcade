@@ -116,7 +116,7 @@ class Zone {
         // Zone-specific properties
         this.setupZoneSpecifics();
     }
-    
+
     /**
      * Setup the garage door for this zone
      */
@@ -124,14 +124,14 @@ class Zone {
         // Determine door size based on building
         const doorWidth = Math.min(this.width * 0.6, 60); // 60% of building width, max 60px
         const doorHeight = 12; // Standard door height
-        
+
         this.door.width = doorWidth;
         this.door.height = doorHeight;
-        
+
         // Find the nearest road and orient door towards it
         const nearestRoadSide = this.findNearestRoadSide();
         this.door.side = nearestRoadSide;
-        
+
         // Position door based on which side faces the road
         switch (nearestRoadSide) {
             case 'top':
@@ -160,7 +160,7 @@ class Zone {
                 break;
         }
     }
-    
+
     /**
      * Find which side of the building is closest to a road
      */
@@ -168,37 +168,84 @@ class Zone {
         if (!this.game.city || !this.game.city.roads) {
             return 'bottom'; // Default
         }
-        
-        // Calculate distances from each side to nearest road
-        const sides = {
-            top: { x: this.x + this.width / 2, y: this.y },
-            bottom: { x: this.x + this.width / 2, y: this.y + this.height },
-            left: { x: this.x, y: this.y + this.height / 2 },
-            right: { x: this.x + this.width, y: this.y + this.height / 2 }
-        };
-        
+
         let closestSide = 'bottom';
         let minDistance = Infinity;
-        
-        // Check each side
-        for (const [sideName, sidePos] of Object.entries(sides)) {
-            // Find closest road to this side
+
+        // Check each side of the building
+        const sides = ['top', 'bottom', 'left', 'right'];
+
+        for (const sideName of sides) {
+            // Find minimum distance from this side to any road
             for (const road of this.game.city.roads) {
-                // Calculate distance from side to road
-                const roadCenterX = road.x + road.width / 2;
-                const roadCenterY = road.y + road.height / 2;
-                
-                const dx = sidePos.x - roadCenterX;
-                const dy = sidePos.y - roadCenterY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
+                let distance;
+
+                // Calculate perpendicular distance from side to road
+                switch (sideName) {
+                    case 'top':
+                        // Distance from top edge to road
+                        if (road.y + road.height <= this.y) {
+                            // Road is above building
+                            distance = this.y - (road.y + road.height);
+                        } else if (road.y >= this.y) {
+                            // Road overlaps or is below - use center distance
+                            distance = Math.abs(road.y - this.y);
+                        } else {
+                            // Road intersects top edge
+                            distance = 0;
+                        }
+                        break;
+
+                    case 'bottom':
+                        // Distance from bottom edge to road
+                        if (road.y >= this.y + this.height) {
+                            // Road is below building
+                            distance = road.y - (this.y + this.height);
+                        } else if (road.y + road.height <= this.y + this.height) {
+                            // Road overlaps or is above - use center distance
+                            distance = Math.abs((road.y + road.height) - (this.y + this.height));
+                        } else {
+                            // Road intersects bottom edge
+                            distance = 0;
+                        }
+                        break;
+
+                    case 'left':
+                        // Distance from left edge to road
+                        if (road.x + road.width <= this.x) {
+                            // Road is to the left
+                            distance = this.x - (road.x + road.width);
+                        } else if (road.x >= this.x) {
+                            // Road overlaps or is to the right - use center distance
+                            distance = Math.abs(road.x - this.x);
+                        } else {
+                            // Road intersects left edge
+                            distance = 0;
+                        }
+                        break;
+
+                    case 'right':
+                        // Distance from right edge to road
+                        if (road.x >= this.x + this.width) {
+                            // Road is to the right
+                            distance = road.x - (this.x + this.width);
+                        } else if (road.x + road.width <= this.x + this.width) {
+                            // Road overlaps or is to the left - use center distance
+                            distance = Math.abs((road.x + road.width) - (this.x + this.width));
+                        } else {
+                            // Road intersects right edge
+                            distance = 0;
+                        }
+                        break;
+                }
+
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestSide = sideName;
                 }
             }
         }
-        
+
         return closestSide;
     }
 
@@ -320,20 +367,20 @@ class Zone {
             }
         }
     }
-    
+
     /**
      * Update garage door state
      */
     updateDoor(deltaTime) {
         if (!this.game.player || !this.door) return;
-        
+
         // Calculate distance from player to door
         const doorCenterX = this.door.x + this.door.width / 2;
         const doorCenterY = this.door.y + this.door.height / 2;
         const dx = this.game.player.x - doorCenterX;
         const dy = this.game.player.y - doorCenterY;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
+
         // Determine if door should be opening or closing
         if (distance < this.door.triggerDistance) {
             // Player is close - open door
@@ -348,7 +395,7 @@ class Zone {
                 this.door.isClosing = true;
             }
         }
-        
+
         // Animate door
         if (this.door.isOpening) {
             this.door.openProgress = Math.min(1, this.door.openProgress + this.door.openSpeed);
@@ -577,7 +624,7 @@ class Zone {
         if (this.building) {
             this.building.render(ctx);
         }
-        
+
         // Render garage door
         this.renderDoor(ctx);
 
@@ -613,40 +660,40 @@ class Zone {
 
         ctx.restore();
     }
-    
+
     /**
      * Render the garage door
      */
     renderDoor(ctx) {
         if (!this.door || this.type === 'SPAWN_POINT') return;
-        
+
         ctx.save();
-        
+
         // Calculate door position based on open progress
         const openOffset = this.door.openProgress * this.door.height;
-        
+
         // Door background (opening/frame)
         ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(this.door.x, this.door.y, this.door.width, this.door.height);
-        
+
         // Door itself (slides up)
         if (this.door.openProgress < 1) {
             // Door color based on zone type
             const doorColor = this.getDoorColor();
             ctx.fillStyle = doorColor;
             ctx.fillRect(
-                this.door.x, 
-                this.door.y + openOffset, 
-                this.door.width, 
+                this.door.x,
+                this.door.y + openOffset,
+                this.door.width,
                 this.door.height - openOffset
             );
-            
+
             // Door panels (horizontal lines)
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.lineWidth = 1;
             const panelCount = 4;
             const panelHeight = (this.door.height - openOffset) / panelCount;
-            
+
             for (let i = 1; i < panelCount; i++) {
                 const y = this.door.y + openOffset + (i * panelHeight);
                 ctx.beginPath();
@@ -654,7 +701,7 @@ class Zone {
                 ctx.lineTo(this.door.x + this.door.width, y);
                 ctx.stroke();
             }
-            
+
             // Door handle
             if (this.door.openProgress < 0.5) {
                 ctx.fillStyle = '#666666';
@@ -667,15 +714,15 @@ class Zone {
                 );
             }
         }
-        
+
         // Door frame
         ctx.strokeStyle = '#333333';
         ctx.lineWidth = 2;
         ctx.strokeRect(this.door.x, this.door.y, this.door.width, this.door.height);
-        
+
         ctx.restore();
     }
-    
+
     /**
      * Get door color based on zone type
      */
