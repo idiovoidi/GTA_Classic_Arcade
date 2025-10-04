@@ -52,14 +52,6 @@ const ZONE_TYPES = {
         description: 'Special items and power-ups',
         size: { width: 70, height: 70 },
         spawnWeight: 2
-    },
-    SPAWN_POINT: {
-        name: 'Spawn Point',
-        color: '#00ffff',
-        effect: 'spawn',
-        description: 'Player respawn location',
-        size: { width: 40, height: 40 },
-        spawnWeight: 8
     }
 };
 
@@ -106,12 +98,10 @@ class Zone {
             side: 'bottom'          // Which side the door is on
         };
 
-        // Create actual building for this zone (except spawn points)
+        // Create actual building for this zone
         this.building = null;
-        if (type !== 'SPAWN_POINT') {
-            this.createZoneBuilding();
-            this.setupDoor();
-        }
+        this.createZoneBuilding();
+        this.setupDoor();
 
         // Zone-specific properties
         this.setupZoneSpecifics();
@@ -665,7 +655,7 @@ class Zone {
      * Render the garage door
      */
     renderDoor(ctx) {
-        if (!this.door || this.type === 'SPAWN_POINT') return;
+        if (!this.door) return;
 
         ctx.save();
 
@@ -767,7 +757,6 @@ class Zone {
             case 'WEAPON_SHOP': icon = '🔫'; break;
             case 'GARAGE': icon = '🔧'; break;
             case 'BLACK_MARKET': icon = '🛒'; break;
-            case 'SPAWN_POINT': icon = '📍'; break;
         }
 
         ctx.fillText(icon, centerX, centerY);
@@ -841,25 +830,8 @@ class ZoneManager {
     }
 
     init() {
-        // Create initial spawn points
-        this.createSpawnPoints();
-
         // Create some initial zones
         this.createInitialZones();
-    }
-
-    createSpawnPoints() {
-        const spawnLocations = [
-            { x: 100, y: 100 },
-            { x: this.game.city.width - 200, y: 100 },
-            { x: 100, y: this.game.city.height - 200 },
-            { x: this.game.city.width - 200, y: this.game.city.height - 200 },
-            { x: this.game.city.width / 2, y: this.game.city.height / 2 }
-        ];
-
-        spawnLocations.forEach(location => {
-            this.createZone(location.x, location.y, 'SPAWN_POINT');
-        });
     }
 
     createInitialZones() {
