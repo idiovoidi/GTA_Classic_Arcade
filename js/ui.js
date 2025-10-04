@@ -116,6 +116,40 @@ class UI {
             const pedY = ped.y * scale;
             this.minimapCtx.fillRect(pedX - 0.5, pedY - 0.5, 1, 1);
         }
+        
+        // Draw zone buildings with icons
+        if (this.game.zoneManager && this.game.zoneManager.zones) {
+            for (const zone of this.game.zoneManager.zones) {
+                const zoneX = (zone.x + zone.width / 2) * scale;
+                const zoneY = (zone.y + zone.height / 2) * scale;
+                
+                // Draw zone background circle
+                this.minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                this.minimapCtx.beginPath();
+                this.minimapCtx.arc(zoneX, zoneY, 4, 0, Math.PI * 2);
+                this.minimapCtx.fill();
+                
+                // Draw zone icon with color
+                this.minimapCtx.fillStyle = zone.color;
+                this.minimapCtx.font = 'bold 8px Arial';
+                this.minimapCtx.textAlign = 'center';
+                this.minimapCtx.textBaseline = 'middle';
+                
+                // Get icon for zone type
+                let icon = '?';
+                switch (zone.type) {
+                    case 'SAFE_HOUSE': icon = '🏠'; break;
+                    case 'HOSPITAL': icon = '+'; break;
+                    case 'POLICE_STATION': icon = '★'; break;
+                    case 'WEAPON_SHOP': icon = '⚔'; break;
+                    case 'GARAGE': icon = '🔧'; break;
+                    case 'BLACK_MARKET': icon = '$'; break;
+                    case 'SPAWN_POINT': icon = '◉'; break;
+                }
+                
+                this.minimapCtx.fillText(icon, zoneX, zoneY);
+            }
+        }
     }
     
     renderHealthBar(ctx, x, y, width, height, current, max, color = '#00ff00') {
