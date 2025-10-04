@@ -92,14 +92,114 @@ class Zone {
         this.showLabel = false;
         this.labelTimer = 0;
 
+        // Garage door properties
+        this.door = {
+            openProgress: 0,        // 0 = closed, 1 = fully open
+            isOpening: false,
+            isClosing: false,
+            openSpeed: 0.05,        // Speed of door animation
+            triggerDistance: 80,    // Distance to trigger door opening
+            width: 0,               // Will be set based on building
+            height: 0,
+            x: 0,
+            y: 0,
+            side: 'bottom'          // Which side the door is on
+        };
+
         // Create actual building for this zone (except spawn points)
         this.building = null;
         if (type !== 'SPAWN_POINT') {
             this.createZoneBuilding();
+            this.setupDoor();
         }
 
         // Zone-specific properties
         this.setupZoneSpecifics();
+    }
+    
+    /**
+     * Setup the garage door for this zone
+     */
+    setupDoor() {
+        // Determine door size based on building
+        const doorWidth = Math.min(this.width * 0.6, 60); // 60% of building width, max 60px
+        const doorHeight = 12; // Standard door height
+        
+        this.door.width = doorWidth;
+        this.door.height = doorHeight;
+        
+        // Find the nearest road and orient door towards it
+        const nearestRoadSide = this.findNearestRoadSide();
+        this.door.side = nearestRoadSide;
+        
+        // Position door based on which side faces the road
+        switch (nearestRoadSide) {
+            case 'top':
+                this.door.x = this.x + (this.width - doorWidth) / 2;
+                this.door.y = this.y;
+                this.door.width = doorWidth;
+                this.door.height = doorHeight;
+                break;
+            case 'bottom':
+                this.door.x = this.x + (this.width - doorWidth) / 2;
+                this.door.y = this.y + this.height - doorHeight;
+                this.door.width = doorWidth;
+                this.door.height = doorHeight;
+                break;
+            case 'left':
+                this.door.x = this.x;
+                this.door.y = this.y + (this.height - doorWidth) / 2;
+                this.door.width = doorHeight; // Swap dimensions for vertical door
+                this.door.height = doorWidth;
+                break;
+            case 'right':
+                this.door.x = this.x + this.width - doorHeight;
+                this.door.y = this.y + (this.height - doorWidth) / 2;
+                this.door.width = doorHeight; // Swap dimensions for vertical door
+                this.door.height = doorWidth;
+                break;
+        }
+    }
+    
+    /**
+     * Find which side of the building is closest to a road
+     */
+    findNearestRoadSide() {
+        if (!this.game.city || !this.game.city.roads) {
+            return 'bottom'; // Default
+        }
+        
+        // Calculate distances from each side to nearest road
+        const sides = {
+            top: { x: this.x + this.width / 2, y: this.y },
+            bottom: { x: this.x + this.width / 2, y: this.y + this.height },
+            left: { x: this.x, y: this.y + this.height / 2 },
+            right: { x: this.x + this.width, y: this.y + this.height / 2 }
+        };
+        
+        let closestSide = 'bottom';
+        let minDistance = Infinity;
+        
+        // Check each side
+        for (const [sideName, sidePos] of Object.entries(sides)) {
+            // Find closest road to this side
+            for (const road of this.game.city.roads) {
+                // Calculate distance from side to road
+                const roadCenterX = road.x + road.width / 2;
+                const roadCenterY = road.y + road.height / 2;
+                
+                const dx = sidePos.x - roadCenterX;
+                const dy = sidePos.y - roadCenterY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestSide = sideName;
+                }
+            }
+        }
+        
+        return closestSide;
     }
 
     /**
@@ -191,6 +291,9 @@ class Zone {
         this.pulseTimer += deltaTime * 0.003;
         this.pulseIntensity = Math.sin(this.pulseTimer) * 0.3 + 0.7;
 
+        // Update garage door
+        this.updateDoor(deltaTime);
+
         // Check player interaction
         const wasInside = this.playerInside;
         this.playerInside = this.checkPlayerInside();
@@ -214,6 +317,48 @@ class Zone {
             if (this.labelTimer > 3000) { // Show for 3 seconds
                 this.showLabel = false;
                 this.labelTimer = 0;
+            }
+        }
+    }
+    
+    /**
+     * Update garage door state
+     */
+    updateDoor(deltaTime) {
+        if (!this.game.player || !this.door) return;
+        
+        // Calculate distance from player to door
+        const doorCenterX = this.door.x + this.door.width / 2;
+        const doorCenterY = this.door.y + this.door.height / 2;
+        const dx = this.game.player.x - doorCenterX;
+        const dy = this.game.player.y - doorCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Determine if door should be opening or closing
+        if (distance < this.door.triggerDistance) {
+            // Player is close - open door
+            if (this.door.openProgress < 1) {
+                this.door.isOpening = true;
+                this.door.isClosing = false;
+            }
+        } else {
+            // Player is far - close door
+            if (this.door.openProgress > 0) {
+                this.door.isOpening = false;
+                this.door.isClosing = true;
+            }
+        }
+        
+        // Animate door
+        if (this.door.isOpening) {
+            this.door.openProgress = Math.min(1, this.door.openProgress + this.door.openSpeed);
+            if (this.door.openProgress >= 1) {
+                this.door.isOpening = false;
+            }
+        } else if (this.door.isClosing) {
+            this.door.openProgress = Math.max(0, this.door.openProgress - this.door.openSpeed);
+            if (this.door.openProgress <= 0) {
+                this.door.isClosing = false;
             }
         }
     }
@@ -432,6 +577,9 @@ class Zone {
         if (this.building) {
             this.building.render(ctx);
         }
+        
+        // Render garage door
+        this.renderDoor(ctx);
 
         ctx.save();
 
@@ -464,6 +612,83 @@ class Zone {
         }
 
         ctx.restore();
+    }
+    
+    /**
+     * Render the garage door
+     */
+    renderDoor(ctx) {
+        if (!this.door || this.type === 'SPAWN_POINT') return;
+        
+        ctx.save();
+        
+        // Calculate door position based on open progress
+        const openOffset = this.door.openProgress * this.door.height;
+        
+        // Door background (opening/frame)
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(this.door.x, this.door.y, this.door.width, this.door.height);
+        
+        // Door itself (slides up)
+        if (this.door.openProgress < 1) {
+            // Door color based on zone type
+            const doorColor = this.getDoorColor();
+            ctx.fillStyle = doorColor;
+            ctx.fillRect(
+                this.door.x, 
+                this.door.y + openOffset, 
+                this.door.width, 
+                this.door.height - openOffset
+            );
+            
+            // Door panels (horizontal lines)
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 1;
+            const panelCount = 4;
+            const panelHeight = (this.door.height - openOffset) / panelCount;
+            
+            for (let i = 1; i < panelCount; i++) {
+                const y = this.door.y + openOffset + (i * panelHeight);
+                ctx.beginPath();
+                ctx.moveTo(this.door.x, y);
+                ctx.lineTo(this.door.x + this.door.width, y);
+                ctx.stroke();
+            }
+            
+            // Door handle
+            if (this.door.openProgress < 0.5) {
+                ctx.fillStyle = '#666666';
+                const handleY = this.door.y + openOffset + (this.door.height - openOffset) / 2;
+                ctx.fillRect(
+                    this.door.x + this.door.width / 2 - 3,
+                    handleY - 2,
+                    6,
+                    4
+                );
+            }
+        }
+        
+        // Door frame
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.door.x, this.door.y, this.door.width, this.door.height);
+        
+        ctx.restore();
+    }
+    
+    /**
+     * Get door color based on zone type
+     */
+    getDoorColor() {
+        switch (this.type) {
+            case 'HOSPITAL': return '#cc0066';
+            case 'POLICE_STATION': return '#0000cc';
+            case 'WEAPON_SHOP': return '#cccc00';
+            case 'GARAGE': return '#cc6600';
+            case 'BLACK_MARKET': return '#660066';
+            case 'SAFE_HOUSE': return '#00cc00';
+            default: return '#888888';
+        }
     }
 
     renderZoneIcon(ctx) {
