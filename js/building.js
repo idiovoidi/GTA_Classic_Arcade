@@ -178,19 +178,20 @@ class Building {
      * Generate windows on building edges (breakable)
      */
     generateWindows() {
-        const windowSize = 8;
-        const spacing = 15;
-        const edgeOffset = 12; // Distance from edge
+        const windowWidth = 12;  // Wider windows
+        const windowHeight = 8;  // Taller windows
+        const spacing = 16;      // Slightly more spacing
+        const edgeOffset = 14;   // Distance from corners
 
         // Top edge windows
         for (let x = edgeOffset; x < this.width - edgeOffset; x += spacing) {
-            if (Math.random() < 0.7) {
+            if (Math.random() < 0.8) {  // More windows (80% chance)
                 this.features.push({
                     type: 'window',
                     x: this.x + x,
-                    y: this.y + 2,
-                    width: windowSize,
-                    height: 6,
+                    y: this.y + 1,  // Closer to edge
+                    width: windowWidth,
+                    height: windowHeight,
                     lit: Math.random() < 0.3,
                     broken: false,
                     health: 10
@@ -200,13 +201,13 @@ class Building {
 
         // Bottom edge windows
         for (let x = edgeOffset; x < this.width - edgeOffset; x += spacing) {
-            if (Math.random() < 0.7) {
+            if (Math.random() < 0.8) {
                 this.features.push({
                     type: 'window',
                     x: this.x + x,
-                    y: this.y + this.height - 8,
-                    width: windowSize,
-                    height: 6,
+                    y: this.y + this.height - windowHeight - 1,  // Closer to edge
+                    width: windowWidth,
+                    height: windowHeight,
                     lit: Math.random() < 0.3,
                     broken: false,
                     health: 10
@@ -216,13 +217,13 @@ class Building {
 
         // Left edge windows
         for (let y = edgeOffset; y < this.height - edgeOffset; y += spacing) {
-            if (Math.random() < 0.7) {
+            if (Math.random() < 0.8) {
                 this.features.push({
                     type: 'window',
-                    x: this.x + 2,
+                    x: this.x + 1,  // Closer to edge
                     y: this.y + y,
-                    width: 6,
-                    height: windowSize,
+                    width: windowHeight,  // Rotated dimensions
+                    height: windowWidth,
                     lit: Math.random() < 0.3,
                     broken: false,
                     health: 10
@@ -232,13 +233,13 @@ class Building {
 
         // Right edge windows
         for (let y = edgeOffset; y < this.height - edgeOffset; y += spacing) {
-            if (Math.random() < 0.7) {
+            if (Math.random() < 0.8) {
                 this.features.push({
                     type: 'window',
-                    x: this.x + this.width - 8,
+                    x: this.x + this.width - windowHeight - 1,  // Closer to edge
                     y: this.y + y,
-                    width: 6,
-                    height: windowSize,
+                    width: windowHeight,  // Rotated dimensions
+                    height: windowWidth,
                     lit: Math.random() < 0.3,
                     broken: false,
                     health: 10
