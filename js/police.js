@@ -104,6 +104,11 @@ class Police {
             this.state = 'patrolling';
             this.patrol();
         }
+
+        // Steer back towards road when patrolling (not during chase/attack)
+        if (this.state === 'patrolling') {
+            this.steerTowardsRoad();
+        }
     }
 
     canSeePlayer() {
@@ -147,11 +152,52 @@ class Police {
     }
 
     patrol() {
-        // Simple patrol behavior - move to random points
+        // Simple patrol behavior - move to random points on roads
         if (Math.random() < 0.01) { // 1% chance each frame
             const roadPos = this.game.city.getRandomRoadPosition();
             this.targetX = roadPos.x;
             this.targetY = roadPos.y;
+        }
+    }
+
+    /**
+     * Steer police vehicle back towards road when patrolling
+     */
+    steerTowardsRoad() {
+        // Check if currently on road
+        if (this.game.city.isOnRoad(this.x, this.y)) {
+            return; // Already on road, no correction needed
+        }
+
+        // Find nearest road edge
+        let minDistance = Infinity;
+
+        // Find nearest road edge (not center)
+        let nearestPoint = null;
+        minDistance = Infinity;
+
+        for (const road of this.game.city.roads) {
+            // Find closest point on this road to the police car
+            let closestX, closestY;
+            
+            // Clamp police position to road bounds
+            closestX = Math.max(road.x, Math.min(this.x, road.x + road.width));
+            closestY = Math.max(road.y, Math.min(this.y, road.y + road.height));
+            
+            const dx = closestX - this.x;
+            const dy = closestY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestPoint = { x: closestX, y: closestY };
+            }
+        }
+
+        if (nearestPoint && minDistance < 120) { // Police correct more aggressively
+            // Directly set target to nearest road point
+            this.targetX = nearestPoint.x;
+            this.targetY = nearestPoint.y;
         }
     }
 
@@ -192,7 +238,7 @@ class Police {
     takeDamage(amount, fromAngle = null) {
         this.health -= amount;
         this.alertLevel = 100; // Become fully alert when shot
-        this.state = 'attacking';
+        this.state = 'attacking'; // Switch to attacking (allows off-road pursuit)
 
         if (this.health <= 0 && this.state !== 'dead') {
             this.state = 'dead';

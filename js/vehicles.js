@@ -195,6 +195,8 @@ class Vehicle {
             if (this.panicTimer <= 0) {
                 this.state = 'driving';
                 this.speed = 0.8 + Math.random() * 0.4;
+                // Return to road after panic
+                this.findNewPath();
             }
         } else {
             // Normal driving behavior with vehicle-specific characteristics
@@ -202,6 +204,9 @@ class Vehicle {
             
             // Adjust driving behavior based on vehicle type
             this.adjustDrivingBehavior();
+            
+            // Steer back towards road if off-road (unless panicking)
+            this.steerTowardsRoad();
         }
         
         // Random stops based on vehicle aggressiveness
@@ -276,6 +281,50 @@ class Vehicle {
         const angle = Math.atan2(this.y - danger.y, this.x - danger.x);
         this.angle = angle + (Math.random() - 0.5) * 0.3; // Add some randomness
     }
+
+    /**
+     * Steer vehicle back towards road if off-road
+     */
+    steerTowardsRoad() {
+        // Check if currently on road
+        if (this.game.city.isOnRoad(this.x, this.y)) {
+            return; // Already on road, no correction needed
+        }
+
+        // Find nearest road edge (not center)
+        let nearestPoint = null;
+        let minDistance = Infinity;
+
+        for (const road of this.game.city.roads) {
+            // Find closest point on this road to the vehicle
+            let closestX, closestY;
+            
+            // Clamp vehicle position to road bounds
+            closestX = Math.max(road.x, Math.min(this.x, road.x + road.width));
+            closestY = Math.max(road.y, Math.min(this.y, road.y + road.height));
+            
+            const dx = closestX - this.x;
+            const dy = closestY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestPoint = { x: closestX, y: closestY };
+            }
+        }
+
+        if (nearestPoint && minDistance < 150) { // Increased range for better correction
+            // Calculate angle to nearest road point
+            const targetAngle = Math.atan2(nearestPoint.y - this.y, nearestPoint.x - this.x);
+            
+            // Stronger steering correction based on distance
+            const angleDiff = this.normalizeAngle(targetAngle - this.angle);
+            const distanceFactor = Math.min(minDistance / 150, 1.0); // Stronger when further
+            const steerStrength = 0.05 * (1 + distanceFactor); // 0.05 to 0.1 radians
+            
+            this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), steerStrength);
+        }
+    }
     
     followPath() {
         if (this.path.length === 0) {
@@ -307,13 +356,44 @@ class Vehicle {
         this.path = [];
         this.currentPathIndex = 0;
         
-        // Generate a path with 2-4 waypoints
+        // If off-road, first waypoint should be nearest road
+        if (!this.game.city.isOnRoad(this.x, this.y)) {
+            const nearestRoad = this.findNearestRoad();
+            if (nearestRoad) {
+                this.path.push({ 
+                    x: nearestRoad.x + nearestRoad.width / 2, 
+                    y: nearestRoad.y + nearestRoad.height / 2 
+                });
+            }
+        }
+        
+        // Generate a path with 2-4 waypoints on roads
         const numWaypoints = 2 + Math.floor(Math.random() * 3);
         
         for (let i = 0; i < numWaypoints; i++) {
             const roadPos = this.game.city.getRandomRoadPosition();
             this.path.push({ x: roadPos.x, y: roadPos.y });
         }
+    }
+
+    findNearestRoad() {
+        let nearestRoad = null;
+        let minDistance = Infinity;
+
+        for (const road of this.game.city.roads) {
+            const roadCenterX = road.x + road.width / 2;
+            const roadCenterY = road.y + road.height / 2;
+            const dx = roadCenterX - this.x;
+            const dy = roadCenterY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestRoad = road;
+            }
+        }
+
+        return nearestRoad;
     }
     
     updateMovement(deltaTime) {
