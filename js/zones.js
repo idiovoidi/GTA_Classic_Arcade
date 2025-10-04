@@ -846,13 +846,19 @@ class ZoneManager {
 
         initialZones.forEach(zoneGroup => {
             for (let i = 0; i < zoneGroup.count; i++) {
-                this.createRandomZone(zoneGroup.type);
+                const success = this.createRandomZone(zoneGroup.type);
+
+                // If first attempt failed and this is the first of this type, force spawn with relaxed rules
+                if (!success && i === 0) {
+                    console.warn(`Failed to spawn ${zoneGroup.type} with normal rules, using fallback`);
+                    this.createZoneWithFallback(zoneGroup.type);
+                }
             }
         });
     }
 
     createRandomZone(type = null) {
-        if (this.zones.length >= this.maxZones) return;
+        if (this.zones.length >= this.maxZones) return false;
 
         // Select random zone type if not specified
         if (!type) {
@@ -865,7 +871,57 @@ class ZoneManager {
         const location = this.findSuitableLocation(type);
         if (location) {
             this.createZone(location.x, location.y, type);
+            return true;
         }
+        return false;
+    }
+
+    /**
+     * Create a zone with progressively relaxed rules to guarantee spawning
+     */
+    createZoneWithFallback(type) {
+        const config = ZONE_TYPES[type];
+
+        // Try with relaxed distance requirements
+        let location = this.findSuitableLocation(type, { minDistance: 100, roadDistance: 150 });
+        if (location) {
+            this.createZone(location.x, location.y, type);
+            return true;
+        }
+
+        // Try with very relaxed requirements
+        location = this.findSuitableLocation(type, { minDistance: 50, roadDistance: 200, allowBuildingOverlap: false });
+        if (location) {
+            this.createZone(location.x, location.y, type);
+            return true;
+        }
+
+        // Last resort: find any non-road location
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * (this.game.city.width - config.size.width);
+            const y = Math.random() * (this.game.city.height - config.size.height);
+
+            // Only check road overlap
+            let onRoad = false;
+            if (this.game.city && this.game.city.roads) {
+                for (const road of this.game.city.roads) {
+                    if (this.rectOverlap(x, y, config.size.width, config.size.height,
+                        road.x, road.y, road.width, road.height)) {
+                        onRoad = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!onRoad) {
+                this.createZone(x, y, type);
+                console.log(`Spawned ${type} at fallback location (${Math.round(x)}, ${Math.round(y)})`);
+                return true;
+            }
+        }
+
+        console.error(`Failed to spawn ${type} even with fallback!`);
+        return false;
     }
 
     createZone(x, y, type, level = 1) {
@@ -874,16 +930,16 @@ class ZoneManager {
         return zone;
     }
 
-    findSuitableLocation(type) {
+    findSuitableLocation(type, options = {}) {
         const config = ZONE_TYPES[type];
-        const attempts = 50;
+        const attempts = options.attempts || 50;
 
         for (let i = 0; i < attempts; i++) {
             const x = Math.random() * (this.game.city.width - config.size.width);
             const y = Math.random() * (this.game.city.height - config.size.height);
 
             // Check if location is suitable
-            if (this.isLocationSuitable(x, y, config.size)) {
+            if (this.isLocationSuitable(x, y, config.size, options)) {
                 return { x, y };
             }
         }
@@ -891,8 +947,12 @@ class ZoneManager {
         return null; // No suitable location found
     }
 
-    isLocationSuitable(x, y, size) {
-        // Check if overlaps with roads
+    isLocationSuitable(x, y, size, options = {}) {
+        const minDistance = options.minDistance !== undefined ? options.minDistance : 150;
+        const roadDistance = options.roadDistance !== undefined ? options.roadDistance : 100;
+        const allowBuildingOverlap = options.allowBuildingOverlap !== undefined ? options.allowBuildingOverlap : false;
+
+        // Check if overlaps with roads (always required)
         if (this.game.city && this.game.city.roads) {
             for (const road of this.game.city.roads) {
                 if (this.rectOverlap(
@@ -904,8 +964,8 @@ class ZoneManager {
             }
         }
 
-        // Check if overlaps with existing buildings
-        if (this.game.city && this.game.city.buildings) {
+        // Check if overlaps with existing buildings (unless allowed)
+        if (!allowBuildingOverlap && this.game.city && this.game.city.buildings) {
             for (const building of this.game.city.buildings) {
                 if (this.rectOverlap(
                     x, y, size.width, size.height,
@@ -917,8 +977,6 @@ class ZoneManager {
         }
 
         // Check minimum distance from other zones
-        const minDistance = 150;
-
         for (const zone of this.zones) {
             const dx = Math.abs((x + size.width / 2) - (zone.x + zone.width / 2));
             const dy = Math.abs((y + size.height / 2) - (zone.y + zone.height / 2));
@@ -943,8 +1001,8 @@ class ZoneManager {
                     Math.pow(centerY - roadCenterY, 2)
                 );
 
-                // Must be within 100 units of a road (but not on it)
-                if (distanceToRoad < 100) {
+                // Must be within specified distance of a road (but not on it)
+                if (distanceToRoad < roadDistance) {
                     hasRoadAccess = true;
                     break;
                 }
