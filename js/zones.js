@@ -830,8 +830,18 @@ class ZoneManager {
     }
 
     init() {
+        // Verify city and roads exist
+        if (!this.game.city || !this.game.city.roads || this.game.city.roads.length === 0) {
+            console.error('ZoneManager: City roads must be generated before zones!');
+            return;
+        }
+
+        console.log(`ZoneManager: Initializing zones with ${this.game.city.roads.length} roads available`);
+        
         // Create some initial zones
         this.createInitialZones();
+        
+        console.log(`ZoneManager: Created ${this.zones.length} zones`);
     }
 
     createInitialZones() {

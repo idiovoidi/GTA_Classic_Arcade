@@ -206,7 +206,17 @@ class Game {
             this.dayNightCycle = new DayNightCycle(this);
             this.districtManager = new DistrictManager(this);
             this.weatherSystem = new WeatherSystem(this);
-            this.city = new City(this);
+            
+            // Create city but don't generate buildings yet
+            this.city = new City(this, { skipBuildingGeneration: true });
+            
+            // Initialize zone system BEFORE generating city buildings
+            // This ensures zone buildings are placed first
+            this.zoneManager.init();
+            
+            // Now generate city buildings (they will avoid zone buildings)
+            this.city.generateBuildingsAfterZones();
+            
             this.player = new Player(this, this.width / 2, this.height / 2);
             this.powerUpManager = new PowerUpManager(this);
             
@@ -216,9 +226,6 @@ class Game {
             
             // Initialize UI system
             this.ui = new UI(this);
-            
-            // Initialize zone system
-            this.zoneManager.init();
             
             // Initialize traffic light system
             this.trafficLightManager.init();

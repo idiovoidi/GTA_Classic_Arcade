@@ -12,7 +12,8 @@ class City {
             buildingMargin: config.buildingMargin || 10,
             minBuildingSize: config.minBuildingSize || 40,
             maxBuildingSize: config.maxBuildingSize || 120,
-            density: config.density || 1.0 // Multiplier for building density
+            density: config.density || 1.0, // Multiplier for building density
+            skipBuildingGeneration: config.skipBuildingGeneration || false
         };
 
         this.width = this.config.width;
@@ -24,6 +25,10 @@ class City {
         this.buildings = [];
         this.decorations = [];
 
+        // Store block info for later building generation
+        this.blocksX = 0;
+        this.blocksY = 0;
+
         this.generateCity();
     }
 
@@ -31,8 +36,23 @@ class City {
         // Generate city using block-based system
         this.generateBlockBasedCity();
 
-        // Generate decorations
-        this.generateDecorations();
+        // Generate decorations (only if buildings were generated)
+        if (!this.config.skipBuildingGeneration) {
+            this.generateDecorations();
+        }
+    }
+
+    /**
+     * Generate buildings after zones have been placed
+     * Called after zone initialization
+     */
+    generateBuildingsAfterZones() {
+        if (this.blocksX > 0 && this.blocksY > 0) {
+            console.log('Generating city buildings after zones...');
+            this.generateBuildingsInBlocks(this.blocksX, this.blocksY, this.config);
+            this.generateDecorations();
+            console.log(`City buildings generated: ${this.buildings.length} total buildings`);
+        }
     }
 
     /**
@@ -44,18 +64,21 @@ class City {
         const config = this.config;
 
         // Calculate grid dimensions
-        const blocksX = Math.floor(this.width / (config.blockSize + config.roadWidth));
-        const blocksY = Math.floor(this.height / (config.blockSize + config.roadWidth));
+        this.blocksX = Math.floor(this.width / (config.blockSize + config.roadWidth));
+        this.blocksY = Math.floor(this.height / (config.blockSize + config.roadWidth));
 
-        console.log(`Generating city: ${blocksX}x${blocksY} blocks`);
+        console.log(`Generating city: ${this.blocksX}x${this.blocksY} blocks`);
 
         // Generate road grid
-        this.generateRoadGrid(blocksX, blocksY, config);
+        this.generateRoadGrid(this.blocksX, this.blocksY, config);
 
-        // Generate buildings in each block
-        this.generateBuildingsInBlocks(blocksX, blocksY, config);
-
-        console.log(`City generated: ${this.roads.length} roads, ${this.buildings.length} buildings`);
+        // Generate buildings in each block (unless skipped for zone placement)
+        if (!config.skipBuildingGeneration) {
+            this.generateBuildingsInBlocks(this.blocksX, this.blocksY, config);
+            console.log(`City generated: ${this.roads.length} roads, ${this.buildings.length} buildings`);
+        } else {
+            console.log(`City roads generated: ${this.roads.length} roads (buildings deferred for zone placement)`);
+        }
     }
 
     /**
@@ -209,8 +232,18 @@ class City {
             return false;
         }
 
-        // Check overlap with existing buildings
+        // Check overlap with existing buildings in the current block
         for (const building of existingBuildings) {
+            if (this.rectOverlap(
+                x - margin, y - margin, width + margin * 2, height + margin * 2,
+                building.x, building.y, building.width, building.height
+            )) {
+                return false;
+            }
+        }
+
+        // Check overlap with ALL existing city buildings (including zone buildings)
+        for (const building of this.buildings) {
             if (this.rectOverlap(
                 x - margin, y - margin, width + margin * 2, height + margin * 2,
                 building.x, building.y, building.width, building.height
