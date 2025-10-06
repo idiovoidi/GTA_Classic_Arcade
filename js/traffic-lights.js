@@ -71,10 +71,10 @@ class TrafficLight {
                 break;
         }
         
-        // Play traffic light sound
-        if (this.game.audioManager) {
-            this.game.audioManager.playSound('traffic_light', this.x, this.y);
-        }
+        // Play traffic light sound - DISABLED (too frequent/annoying)
+        // if (this.game.audioManager) {
+        //     this.game.audioManager.playSound('traffic_light', this.x, this.y);
+        // }
         
         console.log(`Traffic light at (${this.x}, ${this.y}) switched to ${this.state}`);
     }

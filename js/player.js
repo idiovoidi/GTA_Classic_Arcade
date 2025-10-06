@@ -360,11 +360,17 @@ class Player {
             // Play engine sound if moving
             if (Math.abs(this.speed) > 0.1) {
                 if (!this.engineSound || this.engineSound.playbackState === 'finished') {
+                    console.log('[Player] Starting engine sound, speed:', this.speed.toFixed(2), 'volume:', volume.toFixed(2), 'pitch:', pitch.toFixed(2));
                     this.engineSound = this.game.audioManager.playSound('car_engine', volume, pitch, true);
+                    
+                    if (!this.engineSound) {
+                        console.warn('[Player] Engine sound failed to play!');
+                    }
                 }
             } else {
                 // Stop engine sound when not moving
                 if (this.engineSound && this.engineSound.stop) {
+                    console.log('[Player] Stopping engine sound');
                     this.engineSound.stop();
                     this.engineSound = null;
                 }

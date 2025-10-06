@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 { color: #4CAF50; }
+        h2 { color: #2196F3; margin-top: 30px; }
+        .sound-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        button:active {
+            background: #0D47A1;
+        }
+        .info {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            background: #4CAF50;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #FF9800;
+        }
+        .error {
+            background: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔊 Enhanced Audio System Test</h1>
+    
+    <div id="status" class="status">Initializing audio system...</div>
+    
+    <div class="info">
+        <strong>Instructions:</strong> Click any button to test the sound. The system will automatically use:
+        <ol>
+            <li>External sound files (if loaded)</li>
+            <li>ZzFX procedural sounds (high quality)</li>
+            <li>Fallback procedural sounds (original system)</li>
+        </ol>
+    </div>
+
+    <h2>🔫 Weapon Sounds</h2>
+    <div class="sound-grid" id="weapons"></div>
+
+    <h2>💥 Explosion Sounds</h2>
+    <div class="sound-grid" id="explosions"></div>
+
+    <h2>🚗 Vehicle Sounds</h2>
+    <div class="sound-grid" id="vehicles"></div>
+
+    <h2>🎵 UI & Pickup Sounds</h2>
+    <div class="sound-grid" id="ui"></div>
+
+    <h2>🚨 Police & Alert Sounds</h2>
+    <div class="sound-grid" id="police"></div>
+
+    <h2>🌩️ Environment Sounds</h2>
+    <div class="sound-grid" id="environment"></div>
+
+    <h2>🎮 Volume Controls</h2>
+    <div class="info">
+        <label>Master Volume: <input type="range" id="masterVolume" min="0" max="100" value="70"></label><br>
+        <label>SFX Volume: <input type="range" id="sfxVolume" min="0" max="100" value="80"></label><br>
+        <label>Music Volume: <input type="range" id="musicVolume" min="0" max="100" value="60"></label>
+    </div>
+
+    <!-- Audio System -->
+    <script src="js/audio.js"></script>
+    <script src="js/audio-system.js"></script>
+
+    <script>
+        // Sound categories
+        const sounds = {
+            weapons: ['pistol', 'shotgun', 'machinegun', 'rifle', 'rocket_shot'],
+            explosions: ['explosion', 'car_explosion', 'tank_explosion'],
+            vehicles: ['car_engine', 'car_horn', 'car_damage', 'car_skid'],
+            ui: ['pickup', 'powerup_pickup', 'weapon_pickup', 'heal', 'level_up', 'achievement'],
+            police: ['police_siren', 'wanted_increase'],
+            environment: ['thunder', 'rain', 'wind', 'zone_enter', 'traffic_light']
+        };
+
+        let audioManager;
+
+        // Initialize audio system
+        async function init() {
+            try {
+                // Create audio manager
+                audioManager = new EnhancedAudioManager();
+                
+                // Initialize sound library (optional external sounds)
+                await audioManager.initSoundLibrary();
+                
+                // Update status
+                document.getElementById('status').textContent = '✅ Audio system ready! Click any button to test sounds.';
+                document.getElementById('status').className = 'status';
+                
+                // Create buttons for each sound
+                Object.entries(sounds).forEach(([category, soundList]) => {
+                    const container = document.getElementById(category);
+                    soundList.forEach(sound => {
+                        const button = document.createElement('button');
+                        button.textContent = sound.replace(/_/g, ' ');
+                        button.onclick = () => playTestSound(sound);
+                        container.appendChild(button);
+                    });
+                });
+                
+                // Set up volume controls
+                document.getElementById('masterVolume').oninput = (e) => {
+                    audioManager.masterVolume = e.target.value / 100;
+                    audioManager.masterGain.gain.value = audioManager.masterVolume;
+                };
+                
+                document.getElementById('sfxVolume').oninput = (e) => {
+                    audioManager.sfxVolume = e.target.value / 100;
+                    audioManager.sfxGain.gain.value = audioManager.sfxVolume;
+                };
+                
+                document.getElementById('musicVolume').oninput = (e) => {
+                    audioManager.musicVolume = e.target.value / 100;
+                    audioManager.musicGain.gain.value = audioManager.musicVolume;
+                };
+                
+            } catch (error) {
+                console.error('Failed to initialize audio:', error);
+                document.getElementById('status').textContent = '❌ Failed to initialize audio system: ' + error.message;
+                document.getElementById('status').className = 'status error';
+            }
+        }
+
+        // Play test sound
+        function playTestSound(soundName) {
+            if (!audioManager) {
+                alert('Audio system not initialized');
+                return;
+            }
+            
+            // Resume audio context if needed (browser requirement)
+            audioManager.resumeAudio();
+            
+            // Play the sound
+            console.log(`Playing sound: ${soundName}`);
+            audioManager.playSound(soundName, 0.8, 1.0, false);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', init);
+        
+        // Resume audio on first user interaction
+        document.addEventListener('click', () => {
+            if (audioManager) {
+                audioManager.resumeAudio();
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>

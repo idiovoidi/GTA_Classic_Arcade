@@ -56,12 +56,44 @@ document.addEventListener('keydown', (e) => {
             location.reload();
         }
     }
+    
+    // Test engine sound with 'E' key
+    if (e.code === 'KeyE' && game && game.audioManager) {
+        console.log('[Test] Playing engine sound manually');
+        const sound = game.audioManager.playSound('car_engine', 0.5, 1.0, true);
+        console.log('[Test] Engine sound result:', sound);
+    }
 });
 
 // Prevent right-click context menu
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 });
+
+// Resume audio on first user interaction (browser requirement)
+let audioResumed = false;
+const resumeAudio = () => {
+    if (!audioResumed && game && game.audioManager) {
+        console.log('[Audio] Attempting to resume audio...');
+        console.log('[Audio] Audio Manager enabled:', game.audioManager.enabled);
+        console.log('[Audio] Audio Context state:', game.audioManager.audioContext?.state);
+        
+        game.audioManager.resumeAudio();
+        if (game.audioManager.audioContext) {
+            game.audioManager.audioContext.resume().then(() => {
+                console.log('[Audio] ✓ Audio context resumed successfully');
+                console.log('[Audio] Sample rate:', game.audioManager.audioContext.sampleRate);
+                audioResumed = true;
+            }).catch(err => {
+                console.error('[Audio] Failed to resume:', err);
+            });
+        }
+    }
+};
+
+document.addEventListener('click', resumeAudio, { once: false });
+document.addEventListener('keydown', resumeAudio, { once: false });
+document.addEventListener('mousedown', resumeAudio, { once: false });
 
 // Handle fullscreen
 function toggleFullscreen() {

@@ -49,9 +49,18 @@ class AudioManager {
      */
     initializeAudioContext() {
         try {
+            // Prevent multiple audio contexts
+            if (window._gameAudioContext) {
+                console.log('[Audio] Reusing existing audio context');
+                this.audioContext = window._gameAudioContext;
+                return;
+            }
+            
             // Create audio context
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             this.audioContext = new AudioContext();
+            window._gameAudioContext = this.audioContext;
+            console.log('[Audio] Created new audio context');
             
             // Set up listener (3D audio)
             if (this.audioContext.listener.positionX) {
@@ -187,7 +196,16 @@ class AudioManager {
      * @returns {Object} Sound control object
      */
     playSound(type, volumeOrX = 0.5, pitchOrY = 1.0, loop = false, x = null, y = null) {
-        if (!this.enabled || !this.audioContext) return null;
+        const logMsg = `playSound: ${type}, vol: ${typeof volumeOrX === 'number' ? volumeOrX.toFixed(2) : volumeOrX}, enabled: ${this.enabled}, context: ${this.audioContext?.state}`;
+        console.log(`[AudioManager] ${logMsg}`);
+        if (window.logAudio) window.logAudio(logMsg, 'info');
+        
+        if (!this.enabled || !this.audioContext) {
+            const errMsg = `Cannot play sound - enabled: ${this.enabled}, context: ${!!this.audioContext}`;
+            console.warn(`[AudioManager] ${errMsg}`);
+            if (window.logAudio) window.logAudio(errMsg, 'error');
+            return null;
+        }
         
         // Determine if this is positional audio
         const isPositional = (typeof volumeOrX === 'number' && typeof pitchOrY === 'number' && 
@@ -338,11 +356,29 @@ class AudioManager {
         
         // Check cache first
         if (this.soundCache.has(cacheKey)) {
+            const msg = `Using cached: ${cacheKey}`;
+            console.log(`[AudioManager] ${msg}`);
+            if (window.logAudio) window.logAudio(msg, 'info');
             return this.soundCache.get(cacheKey);
         }
         
+        const msg = `Generating: ${type}, pitch: ${pitch}`;
+        console.log(`[AudioManager] ${msg}`);
+        if (window.logAudio) window.logAudio(msg, 'info');
+        
         // Generate new sound
         const buffer = this.createSoundBuffer(type, pitch);
+        
+        if (!buffer) {
+            const errMsg = `createSoundBuffer returned NULL for: ${type}`;
+            console.error(`[AudioManager] ${errMsg}`);
+            if (window.logAudio) window.logAudio(errMsg, 'error');
+            return null;
+        }
+        
+        const successMsg = `Generated OK: ${cacheKey}`;
+        console.log(`[AudioManager] ${successMsg}`);
+        if (window.logAudio) window.logAudio(successMsg, 'success');
         
         // Cache management
         if (this.soundCache.size >= this.maxCacheSize) {
@@ -361,26 +397,34 @@ class AudioManager {
      * @returns {AudioBuffer} Generated sound buffer
      */
     createSoundBuffer(type, pitch) {
+        const msg = `createBuffer: ${type}, pitch: ${pitch}`;
+        console.log(`[AudioManager] ${msg}`);
+        if (window.logAudio) window.logAudio(msg, 'info');
+        
         const sampleRate = this.audioContext.sampleRate;
         let duration, generator;
         
         // Define sound parameters based on type
         switch (type) {
             case 'pistol':
+            case 'pistol_shot':
             case 'gunshot':
                 duration = 0.1;
                 generator = this.generateGunshot.bind(this);
                 break;
             case 'shotgun':
+            case 'shotgun_shot':
                 duration = 0.15;
                 generator = this.generateShotgun.bind(this);
                 break;
             case 'uzi':
+            case 'uzi_shot':
             case 'machinegun':
                 duration = 0.08;
                 generator = this.generateMachineGun.bind(this);
                 break;
             case 'rifle':
+            case 'rifle_shot':
                 duration = 0.12;
                 generator = this.generateRifle.bind(this);
                 break;
@@ -493,10 +537,22 @@ class AudioManager {
         }
         
         const length = Math.floor(sampleRate * duration);
+        const bufMsg = `Buffer: len=${length}, dur=${duration.toFixed(2)}s`;
+        console.log(`[AudioManager] ${bufMsg}`);
+        if (window.logAudio) window.logAudio(bufMsg, 'info');
+        
         const buffer = this.audioContext.createBuffer(1, length, sampleRate);
         const data = buffer.getChannelData(0);
         
+        const genMsg = `Calling generator: ${type}`;
+        console.log(`[AudioManager] ${genMsg}`);
+        if (window.logAudio) window.logAudio(genMsg, 'info');
+        
         generator(data, sampleRate, pitch);
+        
+        const doneMsg = `Buffer created ✓`;
+        console.log(`[AudioManager] ${doneMsg}`);
+        if (window.logAudio) window.logAudio(doneMsg, 'success');
         
         return buffer;
     }
@@ -572,14 +628,48 @@ class AudioManager {
     }
     
     generateEngine(data, sampleRate, pitch) {
-        const baseFreq = 100 * pitch;
+        // More realistic engine with multiple harmonics and RPM variation
+        const baseFreq = 80 * pitch; // Lower base frequency for deeper sound
+        const duration = data.length / sampleRate;
+        
         for (let i = 0; i < data.length; i++) {
             const t = i / sampleRate;
-            const envelope = 0.5;
-            const engine = Math.sin(2 * Math.PI * baseFreq * t) * 0.4;
-            const rumble = Math.sin(2 * Math.PI * baseFreq * 0.5 * t) * 0.3;
-            const noise = (Math.random() * 2 - 1) * 0.2;
-            data[i] = (engine + rumble + noise) * envelope;
+            const progress = t / duration;
+            
+            // Simulate RPM variation (slight fluctuation)
+            const rpmVariation = 1 + Math.sin(t * 3) * 0.05 + Math.sin(t * 7) * 0.03;
+            const freq = baseFreq * rpmVariation;
+            
+            // Multiple engine harmonics (like real engine cylinders firing)
+            const fundamental = Math.sin(2 * Math.PI * freq * t) * 0.35;
+            const second = Math.sin(2 * Math.PI * freq * 2 * t) * 0.25;
+            const third = Math.sin(2 * Math.PI * freq * 3 * t) * 0.15;
+            const fourth = Math.sin(2 * Math.PI * freq * 4 * t) * 0.1;
+            
+            // Sub-bass rumble (engine block vibration)
+            const subBass = Math.sin(2 * Math.PI * freq * 0.5 * t) * 0.4;
+            
+            // High frequency buzz (exhaust/intake noise)
+            const buzz = Math.sin(2 * Math.PI * freq * 8 * t) * 0.08;
+            
+            // Filtered noise (mechanical noise)
+            const noise = (Math.random() * 2 - 1) * 0.15;
+            
+            // Slight amplitude modulation (engine vibration)
+            const vibration = 1 + Math.sin(2 * Math.PI * 30 * t) * 0.1;
+            
+            // Combine all components
+            const engineSound = (fundamental + second + third + fourth + subBass + buzz + noise) * vibration;
+            
+            // Envelope (slight fade in/out for looping)
+            let envelope = 0.6;
+            if (progress < 0.05) {
+                envelope *= progress / 0.05; // Fade in
+            } else if (progress > 0.95) {
+                envelope *= (1 - progress) / 0.05; // Fade out
+            }
+            
+            data[i] = engineSound * envelope;
         }
     }
     
@@ -643,13 +733,31 @@ class AudioManager {
     }
     
     generateSiren(data, sampleRate, pitch) {
-        const baseFreq = 400 * pitch;
+        // Classic two-tone police siren (wee-woo pattern)
+        const lowFreq = 650 * pitch;   // Lower tone
+        const highFreq = 750 * pitch;  // Higher tone
+        const switchRate = 1.5;        // How fast it alternates (Hz)
+        
         for (let i = 0; i < data.length; i++) {
             const t = i / sampleRate;
-            const envelope = 0.6;
-            const freq = baseFreq + Math.sin(2 * Math.PI * 1.5 * t) * 200;
-            const siren = Math.sin(2 * Math.PI * freq * t);
-            data[i] = siren * envelope;
+            
+            // Alternate between two tones with smooth transition
+            const cycle = Math.sin(2 * Math.PI * switchRate * t);
+            const freq = cycle > 0 ? highFreq : lowFreq;
+            
+            // Smooth transition between tones
+            const blend = Math.abs(cycle);
+            const tone1 = Math.sin(2 * Math.PI * lowFreq * t);
+            const tone2 = Math.sin(2 * Math.PI * highFreq * t);
+            const siren = tone1 * (1 - blend) + tone2 * blend;
+            
+            // Slight amplitude modulation for realism
+            const vibrato = 1 + Math.sin(2 * Math.PI * 5 * t) * 0.05;
+            
+            // Envelope
+            const envelope = 0.5;
+            
+            data[i] = siren * envelope * vibrato;
         }
     }
     

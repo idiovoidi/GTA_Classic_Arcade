@@ -197,7 +197,7 @@ class Game {
     init() {
         try {
             // Initialize game objects
-            this.audioManager = new AudioManager();
+            this.audioManager = new EnhancedAudioManager();
             this.spatialGrid = new SpatialGrid(2000, 2000, 100); // Match city size
             this.poolManager = new PoolManager(this);
             this.missionManager = new MissionManager(this);

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Audio Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 { color: #4CAF50; }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.good { background: #4CAF50; }
+        .status.warning { background: #FF9800; }
+        .status.error { background: #f44336; }
+        .test-section {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        button:active {
+            background: #0D47A1;
+        }
+        .log {
+            background: #000;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #2196F3;
+            padding-left: 10px;
+        }
+        .log-entry.error {
+            border-left-color: #f44336;
+            color: #f44336;
+        }
+        .log-entry.success {
+            border-left-color: #4CAF50;
+            color: #4CAF50;
+        }
+        .log-entry.info {
+            border-left-color: #2196F3;
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔊 Simple Audio Test</h1>
+    
+    <div id="status" class="status warning">Click "Initialize Audio" to start</div>
+    
+    <div class="test-section">
+        <h2>Step 1: Initialize Audio</h2>
+        <button onclick="initAudio()">Initialize Audio</button>
+        <button onclick="checkAudioStatus()">Check Status</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 2: Test Basic Sounds</h2>
+        <button onclick="testBeep()">Test Beep (440Hz)</button>
+        <button onclick="testLowBeep()">Test Low Beep (220Hz)</button>
+        <button onclick="testHighBeep()">Test High Beep (880Hz)</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 3: Test Weapon Sounds</h2>
+        <button onclick="testSound('pistol')">Pistol</button>
+        <button onclick="testSound('pistol_shot')">Pistol Shot</button>
+        <button onclick="testSound('shotgun')">Shotgun</button>
+        <button onclick="testSound('rifle')">Rifle</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 4: Test Vehicle Sounds</h2>
+        <button onclick="testSound('car_engine')">Car Engine</button>
+        <button onclick="testSound('car_horn')">Car Horn</button>
+        <button onclick="testSound('car_damage')">Car Damage</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 5: Test Police & Alert Sounds</h2>
+        <button onclick="testSound('police_siren')">Police Siren</button>
+        <button onclick="testSound('wanted_increase')">Wanted Increase</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 6: Test Other Sounds</h2>
+        <button onclick="testSound('explosion')">Explosion</button>
+        <button onclick="testSound('pickup')">Pickup</button>
+        <button onclick="testSound('impact')">Impact</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Debug Log</h2>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let masterGain = null;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        function updateStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+        
+        function initAudio() {
+            try {
+                log('Initializing audio context...', 'info');
+                
+                // Create audio context
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioContext();
+                
+                log(`Audio context created: ${audioContext.state}`, 'success');
+                log(`Sample rate: ${audioContext.sampleRate}Hz`, 'info');
+                
+                // Create master gain
+                masterGain = audioContext.createGain();
+                masterGain.gain.value = 0.5;
+                masterGain.connect(audioContext.destination);
+                
+                log('Master gain created', 'success');
+                
+                // Resume if suspended
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        log('Audio context resumed', 'success');
+                        updateStatus('✅ Audio Ready!', 'good');
+                    });
+                } else {
+                    updateStatus('✅ Audio Ready!', 'good');
+                }
+                
+            } catch (error) {
+                log(`Error initializing audio: ${error.message}`, 'error');
+                updateStatus('❌ Audio Failed', 'error');
+            }
+        }
+        
+        function checkAudioStatus() {
+            if (!audioContext) {
+                log('Audio context not initialized', 'error');
+                updateStatus('❌ Not Initialized', 'error');
+                return;
+            }
+            
+            log('=== Audio Status ===', 'info');
+            log(`State: ${audioContext.state}`, 'info');
+            log(`Sample Rate: ${audioContext.sampleRate}Hz`, 'info');
+            log(`Current Time: ${audioContext.currentTime.toFixed(2)}s`, 'info');
+            log(`Base Latency: ${audioContext.baseLatency || 'N/A'}`, 'info');
+            
+            if (audioContext.state === 'running') {
+                updateStatus('✅ Audio Running', 'good');
+            } else if (audioContext.state === 'suspended') {
+                updateStatus('⚠️ Audio Suspended (click to resume)', 'warning');
+                audioContext.resume();
+            } else {
+                updateStatus('❌ Audio Not Running', 'error');
+            }
+        }
+        
+        function testBeep(frequency = 440) {
+            if (!audioContext) {
+                log('Initialize audio first!', 'error');
+                return;
+            }
+            
+            try {
+                log(`Playing beep at ${frequency}Hz...`, 'info');
+                
+                // Create oscillator
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                
+                // Envelope
+                gainNode.gain.value = 0;
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+                gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+                
+                // Connect
+                oscillator.connect(gainNode);
+                gainNode.connect(masterGain);
+                
+                // Play
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2);
+                
+                log(`✓ Beep played successfully`, 'success');
+                
+            } catch (error) {
+                log(`Error playing beep: ${error.message}`, 'error');
+            }
+        }
+        
+        function testLowBeep() {
+            testBeep(220);
+        }
+        
+        function testHighBeep() {
+            testBeep(880);
+        }
+        
+        function testSound(soundType) {
+            if (!audioContext) {
+                log('Initialize audio first!', 'error');
+                return;
+            }
+            
+            try {
+                log(`Playing sound: ${soundType}...`, 'info');
+                
+                // Generate procedural sound based on type
+                const buffer = generateSound(soundType);
+                
+                if (!buffer) {
+                    log(`Unknown sound type: ${soundType}`, 'error');
+                    return;
+                }
+                
+                // Create source
+                const source = audioContext.createBufferSource();
+                const gainNode = audioContext.createGain();
+                
+                source.buffer = buffer;
+                gainNode.gain.value = 0.5;
+                
+                // Connect
+                source.connect(gainNode);
+                gainNode.connect(masterGain);
+                
+                // Play
+                source.start();
+                
+                log(`✓ Sound played: ${soundType}`, 'success');
+                
+            } catch (error) {
+                log(`Error playing sound: ${error.message}`, 'error');
+            }
+        }
+        
+        function generateSound(type) {
+            const sampleRate = audioContext.sampleRate;
+            let duration = 0.2;
+            let length = Math.floor(sampleRate * duration);
+            
+            // Adjust duration based on sound type
+            switch(type) {
+                case 'pistol':
+                case 'pistol_shot':
+                    duration = 0.1;
+                    break;
+                case 'shotgun':
+                case 'shotgun_shot':
+                    duration = 0.15;
+                    break;
+                case 'rifle':
+                case 'rifle_shot':
+                    duration = 0.12;
+                    break;
+                case 'explosion':
+                    duration = 0.8;
+                    break;
+                case 'car_engine':
+                    duration = 1.0;
+                    break;
+                case 'car_damage':
+                    duration = 0.3;
+                    break;
+            }
+            
+            length = Math.floor(sampleRate * duration);
+            const buffer = audioContext.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            // Generate sound based on type
+            switch(type) {
+                case 'pistol':
+                case 'pistol_shot':
+                    generateGunshot(data, sampleRate);
+                    break;
+                case 'shotgun':
+                case 'shotgun_shot':
+                    generateShotgun(data, sampleRate);
+                    break;
+                case 'rifle':
+                case 'rifle_shot':
+                    generateRifle(data, sampleRate);
+                    break;
+                case 'explosion':
+                    generateExplosion(data, sampleRate);
+                    break;
+                case 'car_engine':
+                    generateEngine(data, sampleRate);
+                    break;
+                case 'car_horn':
+                    generateHorn(data, sampleRate);
+                    break;
+                case 'car_damage':
+                    generateMetalImpact(data, sampleRate);
+                    break;
+                case 'pickup':
+                    generatePickup(data, sampleRate);
+                    break;
+                case 'impact':
+                    generateImpact(data, sampleRate);
+                    break;
+                default:
+                    log(`Unknown sound type: ${type}`, 'error');
+                    return null;
+            }
+            
+            return buffer;
+        }
+        
+        // Sound generation functions
+        function generateGunshot(data, sampleRate) {
+            const baseFreq = 150;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.exp(-t * 20);
+                const noise = (Math.random() * 2 - 1) * 0.8;
+                const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.3;
+                data[i] = (noise + tone) * envelope;
+            }
+        }
+        
+        function generateShotgun(data, sampleRate) {
+            const baseFreq = 120;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.exp(-t * 15);
+                const noise = (Math.random() * 2 - 1) * 0.9;
+                const lowTone = Math.sin(2 * Math.PI * baseFreq * t) * 0.4;
+                data[i] = (noise + lowTone) * envelope;
+            }
+        }
+        
+        function generateRifle(data, sampleRate) {
+            const baseFreq = 200;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.exp(-t * 18);
+                const noise = (Math.random() * 2 - 1) * 0.8;
+                const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.3;
+                const highTone = Math.sin(2 * Math.PI * baseFreq * 2 * t) * 0.1;
+                data[i] = (noise + tone + highTone) * envelope;
+            }
+        }
+        
+        function generateExplosion(data, sampleRate) {
+            const baseFreq = 60;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.exp(-t * 3);
+                const noise = (Math.random() * 2 - 1) * 0.9;
+                const rumble = Math.sin(2 * Math.PI * baseFreq * t) * 0.6;
+                const crackle = Math.sin(2 * Math.PI * 400 * t) * 0.2 * Math.exp(-t * 8);
+                data[i] = (noise + rumble + crackle) * envelope;
+            }
+        }
+        
+        function generateEngine(data, sampleRate) {
+            // More realistic engine with multiple harmonics and RPM variation
+            const baseFreq = 80; // Lower base frequency for deeper sound
+            const duration = data.length / sampleRate;
+            
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const progress = t / duration;
+                
+                // Simulate RPM variation (slight fluctuation)
+                const rpmVariation = 1 + Math.sin(t * 3) * 0.05 + Math.sin(t * 7) * 0.03;
+                const freq = baseFreq * rpmVariation;
+                
+                // Multiple engine harmonics (like real engine cylinders firing)
+                const fundamental = Math.sin(2 * Math.PI * freq * t) * 0.35;
+                const second = Math.sin(2 * Math.PI * freq * 2 * t) * 0.25;
+                const third = Math.sin(2 * Math.PI * freq * 3 * t) * 0.15;
+                const fourth = Math.sin(2 * Math.PI * freq * 4 * t) * 0.1;
+                
+                // Sub-bass rumble (engine block vibration)
+                const subBass = Math.sin(2 * Math.PI * freq * 0.5 * t) * 0.4;
+                
+                // High frequency buzz (exhaust/intake noise)
+                const buzz = Math.sin(2 * Math.PI * freq * 8 * t) * 0.08;
+                
+                // Filtered noise (mechanical noise)
+                const noise = (Math.random() * 2 - 1) * 0.15;
+                
+                // Slight amplitude modulation (engine vibration)
+                const vibration = 1 + Math.sin(2 * Math.PI * 30 * t) * 0.1;
+                
+                // Combine all components
+                const engineSound = (fundamental + second + third + fourth + subBass + buzz + noise) * vibration;
+                
+                // Envelope (slight fade in/out for looping)
+                let envelope = 0.6;
+                if (progress < 0.05) {
+                    envelope *= progress / 0.05; // Fade in
+                } else if (progress > 0.95) {
+                    envelope *= (1 - progress) / 0.05; // Fade out
+                }
+                
+                data[i] = engineSound * envelope;
+            }
+        }
+        
+        function generateHorn(data, sampleRate) {
+            const baseFreq = 440;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = 0.6;
+                const horn = Math.sin(2 * Math.PI * baseFreq * t);
+                data[i] = horn * envelope;
+            }
+        }
+        
+        function generateMetalImpact(data, sampleRate) {
+            const baseFreq = 300;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.exp(-t * 12);
+                const noise = (Math.random() * 2 - 1) * 0.7;
+                const clang = Math.sin(2 * Math.PI * baseFreq * t) * 0.5;
+                const ring = Math.sin(2 * Math.PI * baseFreq * 3 * t) * 0.3 * Math.exp(-t * 8);
+                data[i] = (noise + clang + ring) * envelope;
+            }
+        }
+        
+        function generatePickup(data, sampleRate) {
+            const baseFreq = 440;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.exp(-t * 5);
+                const tone1 = Math.sin(2 * Math.PI * baseFreq * t) * 0.5;
+                const tone2 = Math.sin(2 * Math.PI * baseFreq * 1.5 * t) * 0.3;
+                const sparkle = Math.sin(2 * Math.PI * baseFreq * 3 * t) * 0.2;
+                data[i] = (tone1 + tone2 + sparkle) * envelope;
+            }
+        }
+        
+        function generateImpact(data, sampleRate) {
+            const baseFreq = 200;
+            for (let i = 0; i < data.length; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.exp(-t * 15);
+                const noise = (Math.random() * 2 - 1) * 0.8;
+                const thud = Math.sin(2 * Math.PI * baseFreq * t) * 0.4;
+                data[i] = (noise + thud) * envelope;
+            }
+        }
+        
+        // Auto-initialize on first interaction
+        document.addEventListener('click', function initOnClick() {
+            if (!audioContext) {
+                initAudio();
+            }
+        }, { once: true });
+        
+        // Log initial message
+        log('Click "Initialize Audio" or any button to start', 'info');
+    </script>
+</body>
+</html>
