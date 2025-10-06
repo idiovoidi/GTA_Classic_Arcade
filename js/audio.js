@@ -563,9 +563,9 @@ class AudioManager {
         for (let i = 0; i < data.length; i++) {
             const t = i / sampleRate;
             const envelope = Math.exp(-t * 20);
-            const noise = (Math.random() * 2 - 1) * 0.8;
-            const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.3;
-            data[i] = (noise + tone) * envelope;
+            const noise = (Math.random() * 2 - 1) * 1.0; // Increased from 0.8 to 1.0
+            const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.4; // Increased from 0.3 to 0.4
+            data[i] = (noise + tone) * envelope * 1.2; // Added 1.2x multiplier
         }
     }
     
@@ -574,9 +574,9 @@ class AudioManager {
         for (let i = 0; i < data.length; i++) {
             const t = i / sampleRate;
             const envelope = Math.exp(-t * 15);
-            const noise = (Math.random() * 2 - 1) * 0.9;
-            const lowTone = Math.sin(2 * Math.PI * baseFreq * t) * 0.4;
-            data[i] = (noise + lowTone) * envelope;
+            const noise = (Math.random() * 2 - 1) * 1.1; // Increased from 0.9 to 1.1
+            const lowTone = Math.sin(2 * Math.PI * baseFreq * t) * 0.5; // Increased from 0.4 to 0.5
+            data[i] = (noise + lowTone) * envelope * 1.2; // Added 1.2x multiplier
         }
     }
     
@@ -585,9 +585,9 @@ class AudioManager {
         for (let i = 0; i < data.length; i++) {
             const t = i / sampleRate;
             const envelope = Math.exp(-t * 25);
-            const noise = (Math.random() * 2 - 1) * 0.7;
-            const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.2;
-            data[i] = (noise + tone) * envelope;
+            const noise = (Math.random() * 2 - 1) * 0.9; // Increased from 0.7 to 0.9
+            const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.3; // Increased from 0.2 to 0.3
+            data[i] = (noise + tone) * envelope * 1.2; // Added 1.2x multiplier
         }
     }
     
@@ -596,10 +596,10 @@ class AudioManager {
         for (let i = 0; i < data.length; i++) {
             const t = i / sampleRate;
             const envelope = Math.exp(-t * 18);
-            const noise = (Math.random() * 2 - 1) * 0.8;
-            const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.3;
-            const highTone = Math.sin(2 * Math.PI * baseFreq * 2 * t) * 0.1;
-            data[i] = (noise + tone + highTone) * envelope;
+            const noise = (Math.random() * 2 - 1) * 1.0; // Increased from 0.8 to 1.0
+            const tone = Math.sin(2 * Math.PI * baseFreq * t) * 0.4; // Increased from 0.3 to 0.4
+            const highTone = Math.sin(2 * Math.PI * baseFreq * 2 * t) * 0.15; // Increased from 0.1 to 0.15
+            data[i] = (noise + tone + highTone) * envelope * 1.2; // Added 1.2x multiplier
         }
     }
     
@@ -754,8 +754,8 @@ class AudioManager {
             // Slight amplitude modulation for realism
             const vibrato = 1 + Math.sin(2 * Math.PI * 5 * t) * 0.05;
             
-            // Envelope
-            const envelope = 0.5;
+            // Quieter envelope - dimmed for background ambience
+            const envelope = 0.25; // Reduced from 0.5 to 0.25
             
             data[i] = siren * envelope * vibrato;
         }
