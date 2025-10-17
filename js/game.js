@@ -28,6 +28,8 @@ class Game {
         this.deltaTime = 0;
         this.fps = 60;
         this.targetFrameTime = 1000 / this.fps;
+        // Debug logging flag (verbose console output when ?debug=true)
+        this.debugEnabled = (typeof window !== 'undefined' && window.location && window.location.search.includes('debug=true'));
 
         // Quality settings
         this.qualitySettings = {
@@ -197,7 +199,8 @@ class Game {
     init() {
         try {
             // Initialize game objects
-            this.audioManager = new EnhancedAudioManager();
+            // Audio is lazy-loaded on first user interaction via js/main.js
+            this.audioManager = this.audioManager || null;
             this.spatialGrid = new SpatialGrid(2000, 2000, 100); // Match city size
             this.poolManager = new PoolManager(this);
             this.missionManager = new MissionManager(this);
@@ -1271,7 +1274,7 @@ class Game {
         // Remove the lowest priority corpses
         this.corpses = this.corpses.slice(corpsesToRemove);
 
-        console.log(`Cleaned up ${corpsesToRemove} corpses. Remaining: ${this.corpses.length}`);
+        if (this.debugEnabled) console.log(`Cleaned up ${corpsesToRemove} corpses. Remaining: ${this.corpses.length}`);
     }
 
     /**
@@ -1625,7 +1628,7 @@ class Game {
             this.audioManager.playSound('police_siren', spawnX, spawnY);
         }
 
-        console.log(`Police spawned using ${spawnMethod} method at wanted level ${this.wantedSystem.level}`);
+        if (this.debugEnabled) console.log(`Police spawned using ${spawnMethod} method at wanted level ${this.wantedSystem.level}`);
     }
 
     spawnPolice() {
@@ -1711,7 +1714,7 @@ class Game {
             this.audioManager.playSound('pedestrian_death', boundedX, boundedY); // TODO: Add proper soldier spawn sound
         }
 
-        console.log(`Soldier spawned at wanted level ${this.wantedSystem.level}`);
+        if (this.debugEnabled) console.log(`Soldier spawned at wanted level ${this.wantedSystem.level}`);
     }
 
     spawnTank() {
@@ -1734,7 +1737,7 @@ class Game {
             this.audioManager.playSound('tank_spawn', boundedX, boundedY);
         }
 
-        console.log(`Tank spawned at wanted level ${this.wantedSystem.level}`);
+        if (this.debugEnabled) console.log(`Tank spawned at wanted level ${this.wantedSystem.level}`);
     }
 
     addHeat(amount, crimeType) {
@@ -1756,7 +1759,7 @@ class Game {
             // Screen flash effect
             this.addCameraShake(5, 200);
 
-            console.log(`Wanted Level increased to ${newLevel} due to ${crimeType}`);
+            if (this.debugEnabled) console.log(`Wanted Level increased to ${newLevel} due to ${crimeType}`);
         }
     }
 
@@ -1786,7 +1789,7 @@ class Game {
                     this.wantedSystem.heatPoints = 0; // Clear heat when level reaches 0
                 }
 
-                console.log(`Wanted Level decreased to ${this.wantedSystem.level}`);
+                if (this.debugEnabled) console.log(`Wanted Level decreased to ${this.wantedSystem.level}`);
             }
         }
 

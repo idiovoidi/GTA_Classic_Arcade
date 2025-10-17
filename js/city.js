@@ -48,10 +48,10 @@ class City {
      */
     generateBuildingsAfterZones() {
         if (this.blocksX > 0 && this.blocksY > 0) {
-            console.log('Generating city buildings after zones...');
+            if (this.game && this.game.debugEnabled) console.log('Generating city buildings after zones...');
             this.generateBuildingsInBlocks(this.blocksX, this.blocksY, this.config);
             this.generateDecorations();
-            console.log(`City buildings generated: ${this.buildings.length} total buildings`);
+            if (this.game && this.game.debugEnabled) console.log(`City buildings generated: ${this.buildings.length} total buildings`);
         }
     }
 
@@ -67,7 +67,7 @@ class City {
         this.blocksX = Math.floor(this.width / (config.blockSize + config.roadWidth));
         this.blocksY = Math.floor(this.height / (config.blockSize + config.roadWidth));
 
-        console.log(`Generating city: ${this.blocksX}x${this.blocksY} blocks`);
+        if (this.game && this.game.debugEnabled) console.log(`Generating city: ${this.blocksX}x${this.blocksY} blocks`);
 
         // Generate road grid
         this.generateRoadGrid(this.blocksX, this.blocksY, config);
@@ -75,9 +75,9 @@ class City {
         // Generate buildings in each block (unless skipped for zone placement)
         if (!config.skipBuildingGeneration) {
             this.generateBuildingsInBlocks(this.blocksX, this.blocksY, config);
-            console.log(`City generated: ${this.roads.length} roads, ${this.buildings.length} buildings`);
+            if (this.game && this.game.debugEnabled) console.log(`City generated: ${this.roads.length} roads, ${this.buildings.length} buildings`);
         } else {
-            console.log(`City roads generated: ${this.roads.length} roads (buildings deferred for zone placement)`);
+            if (this.game && this.game.debugEnabled) console.log(`City roads generated: ${this.roads.length} roads (buildings deferred for zone placement)`);
         }
     }
 
