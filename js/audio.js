@@ -1,5 +1,6 @@
 class AudioManager {
     constructor() {
+        this.debugEnabled = (typeof window !== 'undefined' && window.location && (window.location.search.includes('audioDebug=true') || window.location.search.includes('debug=true')));
         this.enabled = true;
         this.audioContext = null;
         this.masterVolume = 0.7;
@@ -41,7 +42,7 @@ class AudioManager {
         this.initializeAudioNodes();
         this.initializeMusicTracks();
         
-        console.log('AudioManager initialized with 3D positional audio support');
+        if (this.debugEnabled) console.log('AudioManager initialized with 3D positional audio support');
     }
     
     /**
@@ -51,7 +52,7 @@ class AudioManager {
         try {
             // Prevent multiple audio contexts
             if (window._gameAudioContext) {
-                console.log('[Audio] Reusing existing audio context');
+                if (this.debugEnabled) console.log('[Audio] Reusing existing audio context');
                 this.audioContext = window._gameAudioContext;
                 return;
             }
@@ -60,7 +61,7 @@ class AudioManager {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             this.audioContext = new AudioContext();
             window._gameAudioContext = this.audioContext;
-            console.log('[Audio] Created new audio context');
+            if (this.debugEnabled) console.log('[Audio] Created new audio context');
             
             // Set up listener (3D audio)
             if (this.audioContext.listener.positionX) {
@@ -197,13 +198,13 @@ class AudioManager {
      */
     playSound(type, volumeOrX = 0.5, pitchOrY = 1.0, loop = false, x = null, y = null) {
         const logMsg = `playSound: ${type}, vol: ${typeof volumeOrX === 'number' ? volumeOrX.toFixed(2) : volumeOrX}, enabled: ${this.enabled}, context: ${this.audioContext?.state}`;
-        console.log(`[AudioManager] ${logMsg}`);
-        if (window.logAudio) window.logAudio(logMsg, 'info');
+        if (this.debugEnabled) console.log(`[AudioManager] ${logMsg}`);
+        if (this.debugEnabled && window.logAudio) window.logAudio(logMsg, 'info');
         
         if (!this.enabled || !this.audioContext) {
             const errMsg = `Cannot play sound - enabled: ${this.enabled}, context: ${!!this.audioContext}`;
             console.warn(`[AudioManager] ${errMsg}`);
-            if (window.logAudio) window.logAudio(errMsg, 'error');
+            if (this.debugEnabled && window.logAudio) window.logAudio(errMsg, 'error');
             return null;
         }
         
@@ -357,14 +358,14 @@ class AudioManager {
         // Check cache first
         if (this.soundCache.has(cacheKey)) {
             const msg = `Using cached: ${cacheKey}`;
-            console.log(`[AudioManager] ${msg}`);
-            if (window.logAudio) window.logAudio(msg, 'info');
+            if (this.debugEnabled) console.log(`[AudioManager] ${msg}`);
+            if (this.debugEnabled && window.logAudio) window.logAudio(msg, 'info');
             return this.soundCache.get(cacheKey);
         }
         
         const msg = `Generating: ${type}, pitch: ${pitch}`;
-        console.log(`[AudioManager] ${msg}`);
-        if (window.logAudio) window.logAudio(msg, 'info');
+        if (this.debugEnabled) console.log(`[AudioManager] ${msg}`);
+        if (this.debugEnabled && window.logAudio) window.logAudio(msg, 'info');
         
         // Generate new sound
         const buffer = this.createSoundBuffer(type, pitch);
@@ -372,13 +373,13 @@ class AudioManager {
         if (!buffer) {
             const errMsg = `createSoundBuffer returned NULL for: ${type}`;
             console.error(`[AudioManager] ${errMsg}`);
-            if (window.logAudio) window.logAudio(errMsg, 'error');
+            if (this.debugEnabled && window.logAudio) window.logAudio(errMsg, 'error');
             return null;
         }
         
         const successMsg = `Generated OK: ${cacheKey}`;
-        console.log(`[AudioManager] ${successMsg}`);
-        if (window.logAudio) window.logAudio(successMsg, 'success');
+        if (this.debugEnabled) console.log(`[AudioManager] ${successMsg}`);
+        if (this.debugEnabled && window.logAudio) window.logAudio(successMsg, 'success');
         
         // Cache management
         if (this.soundCache.size >= this.maxCacheSize) {
@@ -398,8 +399,8 @@ class AudioManager {
      */
     createSoundBuffer(type, pitch) {
         const msg = `createBuffer: ${type}, pitch: ${pitch}`;
-        console.log(`[AudioManager] ${msg}`);
-        if (window.logAudio) window.logAudio(msg, 'info');
+        if (this.debugEnabled) console.log(`[AudioManager] ${msg}`);
+        if (this.debugEnabled && window.logAudio) window.logAudio(msg, 'info');
         
         const sampleRate = this.audioContext.sampleRate;
         let duration, generator;
@@ -538,21 +539,21 @@ class AudioManager {
         
         const length = Math.floor(sampleRate * duration);
         const bufMsg = `Buffer: len=${length}, dur=${duration.toFixed(2)}s`;
-        console.log(`[AudioManager] ${bufMsg}`);
-        if (window.logAudio) window.logAudio(bufMsg, 'info');
+        if (this.debugEnabled) console.log(`[AudioManager] ${bufMsg}`);
+        if (this.debugEnabled && window.logAudio) window.logAudio(bufMsg, 'info');
         
         const buffer = this.audioContext.createBuffer(1, length, sampleRate);
         const data = buffer.getChannelData(0);
         
         const genMsg = `Calling generator: ${type}`;
-        console.log(`[AudioManager] ${genMsg}`);
-        if (window.logAudio) window.logAudio(genMsg, 'info');
+        if (this.debugEnabled) console.log(`[AudioManager] ${genMsg}`);
+        if (this.debugEnabled && window.logAudio) window.logAudio(genMsg, 'info');
         
         generator(data, sampleRate, pitch);
         
         const doneMsg = `Buffer created ✓`;
-        console.log(`[AudioManager] ${doneMsg}`);
-        if (window.logAudio) window.logAudio(doneMsg, 'success');
+        if (this.debugEnabled) console.log(`[AudioManager] ${doneMsg}`);
+        if (this.debugEnabled && window.logAudio) window.logAudio(doneMsg, 'success');
         
         return buffer;
     }
@@ -1135,7 +1136,7 @@ class AudioManager {
     transitionToMusicState(newState) {
         if (!this.musicTracks[newState]) return;
         
-        console.log(`Transitioning music from ${this.musicState} to ${newState}`);
+        if (this.debugEnabled) console.log(`Transitioning music from ${this.musicState} to ${newState}`);
         
         // Stop current music
         this.stopCurrentMusic();
@@ -1190,7 +1191,7 @@ class AudioManager {
             oscillator.start(this.audioContext.currentTime + index * 0.1);
         });
         
-        console.log(`Started music track: ${track.name}`);
+        if (this.debugEnabled) console.log(`Started music track: ${track.name}`);
     }
     
     /**

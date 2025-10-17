@@ -4,6 +4,8 @@ let game;
 // Initialize the game when the page loads
 window.addEventListener('load', () => {
     game = new Game();
+    // Expose for error handler/tooling
+    try { window.game = game; } catch (e) {}
     game.init();
 });
 
@@ -70,24 +72,53 @@ document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 });
 
-// Resume audio on first user interaction (browser requirement)
+// Lazy-load audio modules and resume audio on first user interaction
 let audioResumed = false;
-const resumeAudio = () => {
-    if (!audioResumed && game && game.audioManager) {
-        console.log('[Audio] Attempting to resume audio...');
-        console.log('[Audio] Audio Manager enabled:', game.audioManager.enabled);
-        console.log('[Audio] Audio Context state:', game.audioManager.audioContext?.state);
-        
-        game.audioManager.resumeAudio();
-        if (game.audioManager.audioContext) {
-            game.audioManager.audioContext.resume().then(() => {
-                console.log('[Audio] ✓ Audio context resumed successfully');
-                console.log('[Audio] Sample rate:', game.audioManager.audioContext.sampleRate);
-                audioResumed = true;
-            }).catch(err => {
-                console.error('[Audio] Failed to resume:', err);
-            });
+let audioLibLoaded = false;
+let audioLibLoadingPromise = null;
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.defer = true;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Failed to load ' + src));
+        document.head.appendChild(s);
+    });
+}
+
+async function ensureAudioLibLoaded() {
+    if (audioLibLoaded) return;
+    if (!audioLibLoadingPromise) {
+        audioLibLoadingPromise = (async () => {
+            await loadScript('js/audio.js');
+            await loadScript('js/audio-system.js');
+            // Optional configs/resources; ignore failures
+            try { await loadScript('js/sound-config.js'); } catch (e) {}
+            try { await loadScript('js/sound-library.js'); } catch (e) {}
+            audioLibLoaded = true;
+        })();
+    }
+    await audioLibLoadingPromise;
+}
+
+const resumeAudio = async () => {
+    if (audioResumed || !game) return;
+    try {
+        await ensureAudioLibLoaded();
+        if (!game.audioManager && typeof EnhancedAudioManager !== 'undefined') {
+            game.audioManager = new EnhancedAudioManager();
         }
+        if (game.audioManager) {
+            game.audioManager.resumeAudio();
+            if (game.audioManager.audioContext) {
+                await game.audioManager.audioContext.resume();
+                audioResumed = true;
+            }
+        }
+    } catch (err) {
+        console.error('[Audio] Failed to initialize/resume:', err);
     }
 };
 
@@ -140,8 +171,11 @@ function updateFPS() {
     requestAnimationFrame(updateFPS);
 }
 
-// Start FPS monitoring
-updateFPS();
+// Start FPS monitoring only in debug mode
+const __IS_DEBUG__ = window.location.search.includes('debug=true');
+if (__IS_DEBUG__) {
+    updateFPS();
+}
 
 // Error handling
 window.addEventListener('error', (e) => {

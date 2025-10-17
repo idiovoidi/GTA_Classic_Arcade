@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GTA Clone - Top Down Action</title>
+    <link rel="preload" as="script" href="js/game.js" />
+    <link rel="preload" as="script" href="js/main.js" />
     <style>
       body {
         margin: 0;
@@ -145,47 +147,60 @@
     </div>
 
     <!-- Error Handling System (load first) -->
-    <script src="js/error-handler.js"></script>
-    <script src="js/error-wrappers.js"></script>
-    <script src="js/debug-console.js"></script>
-    <script src="js/debug-audio.js"></script>
+    <script defer src="js/error-handler.js"></script>
+    <script defer src="js/error-wrappers.js"></script>
+
+    <!-- Conditionally load debug helpers when ?debug=true -->
+    <script>
+      (function () {
+        try {
+          var isDebug = new URLSearchParams(location.search).get('debug') === 'true';
+          if (isDebug) {
+            var s1 = document.createElement('script');
+            s1.defer = true;
+            s1.src = 'js/debug-console.js';
+            document.head.appendChild(s1);
+
+            var s2 = document.createElement('script');
+            s2.defer = true;
+            s2.src = 'js/debug-audio.js';
+            document.head.appendChild(s2);
+          }
+        } catch (e) {
+          // no-op
+        }
+      })();
+    </script>
 
     <!-- Game Scripts (in dependency order) -->
-    <script src="js/audio.js"></script>
-    <script src="js/audio-system.js"></script>
-
-    <!-- Optional: Custom sound configuration (copy from sound-config.example.js) -->
-    <script
-      src="js/sound-config.js"
-      onerror="console.log('No custom sound config found - using defaults')"
-    ></script>
-    <script src="js/spatial-grid.js"></script>
-    <script src="js/object-pool.js"></script>
-    <script src="js/zones.js"></script>
-    <script src="js/progression.js"></script>
-    <script src="js/missions.js"></script>
-    <script src="js/traffic-lights.js"></script>
-    <script src="js/day-night-cycle.js"></script>
-    <script src="js/districts.js"></script>
-    <script src="js/weather.js"></script>
-    <script src="js/bullets.js"></script>
-    <script src="js/particles.js"></script>
-    <script src="js/weapons.js"></script>
-    <script src="js/powerups.js"></script>
-    <script src="js/physics.js"></script>
-    <script src="js/building-collider.js"></script>
-    <script src="js/destructible-wall.js"></script>
-    <script src="js/support-beam.js"></script>
-    <script src="js/building.js"></script>
-    <script src="js/player.js"></script>
-    <script src="js/city.js"></script>
-    <script src="js/pedestrians.js"></script>
-    <script src="js/police.js"></script>
-    <script src="js/vehicles.js"></script>
-    <script src="js/entities/Tank.js"></script>
-    <script src="js/entities/SoldierTroop.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/main.js"></script>
+    <!-- Audio modules are now lazy-loaded on first user interaction to reduce initial bundle size -->
+    <script defer src="js/spatial-grid.js"></script>
+    <script defer src="js/object-pool.js"></script>
+    <script defer src="js/zones.js"></script>
+    <script defer src="js/progression.js"></script>
+    <script defer src="js/missions.js"></script>
+    <script defer src="js/traffic-lights.js"></script>
+    <script defer src="js/day-night-cycle.js"></script>
+    <script defer src="js/districts.js"></script>
+    <script defer src="js/weather.js"></script>
+    <script defer src="js/bullets.js"></script>
+    <script defer src="js/particles.js"></script>
+    <script defer src="js/weapons.js"></script>
+    <script defer src="js/powerups.js"></script>
+    <script defer src="js/physics.js"></script>
+    <script defer src="js/building-collider.js"></script>
+    <script defer src="js/destructible-wall.js"></script>
+    <script defer src="js/support-beam.js"></script>
+    <script defer src="js/building.js"></script>
+    <script defer src="js/player.js"></script>
+    <script defer src="js/city.js"></script>
+    <script defer src="js/pedestrians.js"></script>
+    <script defer src="js/police.js"></script>
+    <script defer src="js/vehicles.js"></script>
+    <script defer src="js/entities/Tank.js"></script>
+    <script defer src="js/entities/SoldierTroop.js"></script>
+    <script defer src="js/ui.js"></script>
+    <script defer src="js/game.js"></script>
+    <script defer src="js/main.js"></script>
   </body>
 </html>

@@ -140,14 +140,14 @@ class EnhancedAudioManager extends AudioManager {
             useZzFX: false // Disabled by default for performance
         };
         
-        console.log('EnhancedAudioManager initialized (ZzFX disabled for performance)');
+        if (this.debugEnabled) console.log('EnhancedAudioManager initialized (ZzFX disabled for performance)');
     }
     
     /**
      * Initialize sound library with configuration
      */
     async initSoundLibrary(config = {}) {
-        console.log('Initializing Sound Library...');
+        if (this.debugEnabled) console.log('Initializing Sound Library...');
         
         // Merge configuration
         if (config.externalSounds) {
@@ -179,16 +179,16 @@ class EnhancedAudioManager extends AudioManager {
         // Load external sounds if any
         const soundsToLoad = Object.keys(this.soundLibraryConfig.externalSounds).length;
         if (soundsToLoad > 0) {
-            console.log(`Loading ${soundsToLoad} external sounds...`);
+            if (this.debugEnabled) console.log(`Loading ${soundsToLoad} external sounds...`);
             try {
                 await this.loadSounds(this.soundLibraryConfig.externalSounds);
-                console.log('External sounds loaded successfully');
+                if (this.debugEnabled) console.log('External sounds loaded successfully');
             } catch (error) {
                 console.warn('Some external sounds failed to load:', error);
             }
         }
         
-        console.log('Sound Library initialized');
+        if (this.debugEnabled) console.log('Sound Library initialized');
     }
     
     /**
@@ -220,7 +220,7 @@ class EnhancedAudioManager extends AudioManager {
             this.externalSounds.set(name, audioBuffer);
             this.loadingSounds.delete(name);
             
-            console.log(`Loaded sound: ${name}`);
+            if (this.debugEnabled) console.log(`Loaded sound: ${name}`);
             return audioBuffer;
             
         } catch (error) {
@@ -375,7 +375,7 @@ class EnhancedAudioManager extends AudioManager {
     setEnvironment(preset) {
         if (this.environmentPresets[preset]) {
             this.currentEnvironment = preset;
-            console.log(`Environment set to: ${preset}`);
+            if (this.debugEnabled) console.log(`Environment set to: ${preset}`);
         }
     }
     
@@ -387,12 +387,12 @@ class EnhancedAudioManager extends AudioManager {
         // Auto-resume audio context if suspended (browser requirement)
         if (this.audioContext && this.audioContext.state === 'suspended') {
             this.audioContext.resume().then(() => {
-                console.log('[Audio] Audio context resumed');
+                if (this.debugEnabled) console.log('[Audio] Audio context resumed');
             });
         }
         
         // Debug logging
-        if (type && (type.includes('pistol') || type.includes('shotgun') || type.includes('car') || type.includes('engine'))) {
+        if (this.debugEnabled && type && (type.includes('pistol') || type.includes('shotgun') || type.includes('car') || type.includes('engine'))) {
             console.log(`[Audio] Playing sound: ${type}, volume: ${volumeOrX}, enabled: ${this.enabled}, context: ${this.audioContext?.state}`);
         }
         
@@ -420,9 +420,9 @@ class EnhancedAudioManager extends AudioManager {
         
         // ZzFX is completely disabled - always use original procedural audio
         // This ensures consistent, reliable sound generation
-        console.log(`[EnhancedAudio] Calling parent playSound for: ${type}`);
+        if (this.debugEnabled) console.log(`[EnhancedAudio] Calling parent playSound for: ${type}`);
         const result = super.playSound(type, volumeOrX, pitchOrY, loop, x, y);
-        console.log(`[EnhancedAudio] Parent playSound returned:`, result ? 'object' : 'null');
+        if (this.debugEnabled) console.log(`[EnhancedAudio] Parent playSound returned:`, result ? 'object' : 'null');
         return result;
     }
     
